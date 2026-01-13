@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 def train_model():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    # 1. הגדרת טרנספורמציות (אוגמנטציה לאימון, פשוט לוולידציה)
+    # 1) Define transforms (augmentation for training, simple for validation)
     data_transforms = {
         'train': transforms.Compose([
             transforms.Resize((224, 224)),
@@ -26,7 +26,7 @@ def train_model():
         ])
     }
 
-    # 2. טעינת הנתונים (שימי לב לנתיבים לתיקיות שנוצרו ב-split-folders)
+    # 2) Load data (make sure paths match folders created by split-folders)
     image_datasets = {
         'train': datasets.ImageFolder('final_dataset/train', transform=data_transforms['train']),
         'val': datasets.ImageFolder('final_dataset/val', transform=data_transforms['val'])
@@ -37,26 +37,26 @@ def train_model():
         'val': DataLoader(image_datasets['val'], batch_size=32, shuffle=False)
     }
     
-    # 3. חישוב משקלים (Class Weights) למניעת הטיה לטובת משבצות ריקות
+    # 3) Compute class weights to reduce bias towards empty squares
     class_counts = np.array([len(os.listdir(os.path.join('final_dataset/train', c))) for c in image_datasets['train'].classes])
     weights = 1.0 / class_counts
     weights = weights / weights.sum() * len(weights)
     weights_tensor = torch.FloatTensor(weights).to(device)
 
-    # 4. הגדרת המודל (ResNet18)
+    # 4) Define the model (ResNet18)
     model = models.resnet18(pretrained=True)
     model.fc = nn.Linear(model.fc.in_features, 13) 
     model = model.to(device)
 
-    # 5. הגדרת פונקציית הפסד ואופטימייזר
+    # 5) Define loss function and optimizer
     criterion = nn.CrossEntropyLoss(weight=weights_tensor)
     optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
-    # משתני עזר לגרפים
+    # Helper variables for plots
     history = {'train_loss': [], 'val_loss': [], 'train_acc': [], 'val_acc': []}
 
-    # 6. לופ אימון
-    num_epochs = 12 # ניתן לשנות לפי הצורך
+    # 6) Training loop
+    num_epochs = 12  # Change as needed
     print("Starting Training...")
 
     for epoch in range(num_epochs):
@@ -89,7 +89,7 @@ def train_model():
             epoch_loss = running_loss / len(image_datasets[phase])
             epoch_acc = running_corrects.double() / len(image_datasets[phase])
             
-            # שמירת הנתונים לגרף
+            # Store values for plotting
             if phase == 'train':
                 history['train_loss'].append(epoch_loss)
                 history['train_acc'].append(epoch_acc.item())
@@ -99,14 +99,14 @@ def train_model():
 
             print(f'Epoch {epoch+1}/{num_epochs} | {phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
 
-    # שמירת המודל
+    # Save model
     torch.save(model.state_dict(), 'chess_model.pth')
     print("Training Complete. Model saved as chess_model.pth")
 
-    # 7. יצירת הגרפים (ויזואליזציה)
+    # 7) Create plots (visualization)
     plt.figure(figsize=(12, 5))
 
-    # גרף Loss
+    # Loss plot
     plt.subplot(1, 2, 1)
     plt.plot(history['train_loss'], label='Train Loss', color='blue')
     plt.plot(history['val_loss'], label='Val Loss', color='red')
@@ -115,7 +115,7 @@ def train_model():
     plt.ylabel('Loss')
     plt.legend()
 
-    # גרף Accuracy
+    # Accuracy plot
     plt.subplot(1, 2, 2)
     plt.plot(history['train_acc'], label='Train Acc', color='blue')
     plt.plot(history['val_acc'], label='Val Acc', color='red')
@@ -125,7 +125,7 @@ def train_model():
     plt.legend()
 
     plt.tight_layout()
-    plt.savefig('learning_curves.png') # שומר את הגרף כתמונה לדו"ח
+    plt.savefig('learning_curves.png')  # Save the plot image for the report
     plt.show()
 
 if __name__ == "__main__":

@@ -9,19 +9,19 @@ import numpy as np
 def run_test_and_ood():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    # 1. הגדרת הטרנספורמציות (זהות ל-Validation)
+    # 1) Define transforms (identical to validation)
     test_transforms = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    # 2. טעינת נתוני ה-Test
+    # 2) Load test data
     test_dataset = datasets.ImageFolder('final_dataset/test', transform=test_transforms)
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
     class_names = test_dataset.classes
 
-    # 3. טעינת המודל המאומן
+    # 3) Load trained model
     model = models.resnet18()
     model.fc = torch.nn.Linear(model.fc.in_features, 13)
     model.load_state_dict(torch.load('chess_model.pth', map_location=device))
@@ -32,7 +32,7 @@ def run_test_and_ood():
     all_labels = []
     ood_count = 0
     
-    # סף ביטחון - אם המודל בטוח פחות מ-70%, נחשיב זאת כ-OOD
+    # Confidence threshold: if the model is < 70% confident, count it as OOD
     CONFIDENCE_THRESHOLD = 0.70 
 
     print("Evaluating Test Set...")
@@ -41,24 +41,24 @@ def run_test_and_ood():
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
             
-            # הפיכת הפלט להסתברויות (Softmax)
+            # Convert logits to probabilities (Softmax)
             probs = torch.nn.functional.softmax(outputs, dim=1)
             confidences, preds = torch.max(probs, 1)
 
             for i in range(len(preds)):
                 if confidences[i] < CONFIDENCE_THRESHOLD:
-                    # זוהה כ-Out of Distribution
+                    # Detected as Out-of-Distribution
                     ood_count += 1
                 
                 all_preds.append(preds[i].item())
                 all_labels.append(labels[i].item())
 
-    # 4. הצגת תוצאות
+    # 4) Report results
     acc = np.mean(np.array(all_preds) == np.array(all_labels))
     print(f"Test Accuracy: {acc:.4f}")
     print(f"OOD Detections (Low Confidence): {ood_count} images out of {len(all_labels)}")
 
-    # 5. יצירת מטריצת בלבול
+    # 5) Build confusion matrix
     cm = confusion_matrix(all_labels, all_preds)
     plt.figure(figsize=(12, 10))
     sns.heatmap(cm, annot=True, fmt='d', xticklabels=class_names, yticklabels=class_names)

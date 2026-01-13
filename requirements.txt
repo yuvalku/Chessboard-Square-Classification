@@ -2,5 +2,9 @@ torch
 torchvision
 opencv-python
 numpy
-pandas
-pilow
+pandas<2.3
+pillow
+scikit-learn
+matplotlib
+seaborn
+split-folders

@@ -1,0 +1,15 @@
+dataset_out/*
+
+# Track only this zip even though dataset_out/* is ignored
+!dataset_out/occlusion_squares.zip
+
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+# Images (avoid committing large datasets)
+*.jpg
+*.jpeg
+*.JPG
+*.JPEG
+*.png
