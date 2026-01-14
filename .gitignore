@@ -1,7 +1,4 @@
-dataset_out/*
-
-# Track only this zip even though dataset_out/* is ignored
-!dataset_out/occlusion_squares.zip
+raw_games/*
 
 __pycache__/
 **/__pycache__/
@@ -13,3 +10,4 @@ __pycache__/
 *.JPG
 *.JPEG
 *.png
+

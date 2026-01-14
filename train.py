@@ -38,14 +38,18 @@ def train_model():
     }
     
     # 3) Compute class weights to reduce bias towards empty squares
-    class_counts = np.array([len(os.listdir(os.path.join('final_dataset/train', c))) for c in image_datasets['train'].classes])
+    class_counts = np.array([
+        sum(os.path.isfile(os.path.join('final_dataset/train', c, f)) for f in os.listdir(os.path.join('final_dataset/train', c)))
+        for c in image_datasets['train'].classes
+    ])
     weights = 1.0 / class_counts
     weights = weights / weights.sum() * len(weights)
     weights_tensor = torch.FloatTensor(weights).to(device)
 
     # 4) Define the model (ResNet18)
     model = models.resnet18(pretrained=True)
-    model.fc = nn.Linear(model.fc.in_features, 13) 
+    num_classes = len(image_datasets['train'].classes)
+    model.fc = nn.Linear(model.fc.in_features, num_classes)
     model = model.to(device)
 
     # 5) Define loss function and optimizer

@@ -30,7 +30,7 @@ Then re-run `pip install -r requirements.txt` if needed.
 ### 4) Quick sanity check
 
 ```powershell
-python -c "import torch; import torchvision; import cv2; import numpy; import pandas; import PIL; import sklearn; import matplotlib; import seaborn; import splitfolders; print('OK')"
+python -c "import torch; import torchvision; import cv2; import numpy; import pandas; import PIL; import sklearn; import matplotlib; import seaborn; import splitfolders; import chess; print('OK')"
 ```
 
 ## Project scripts
@@ -41,11 +41,11 @@ Running `./preprocessing.py` or `./preprocessing` may do nothing if `.py` file a
 ### Data preprocessing / dataset creation
 
 `preprocessing.py`:
-- Scans `raw_games/` for game zips/folders
-- Extracts if needed
-- Slices each chessboard image into 8x8 overlapping tiles
-- Writes a temporary dataset to `temp_dataset/`
-- Splits it into `final_dataset/{train,val,test}/` using `split-folders`
+- Scans `raw_games/` for games in two supported layouts:
+	- CSV-labeled games: `<game>.csv` + `tagged_images/`
+	- PGN-only games: `<game>.pgn` + `images/` (frames are auto-aligned to moves using simple motion peaks)
+- Builds `final_dataset/{train,val,test}/<class>/*.png` directly by slicing each frame into 8×8 overlapping tiles
+- Adds PGN-only generated frames to **train only** (keeps val/test as strictly CSV-labeled)
 
 Run:
 
@@ -54,15 +54,29 @@ python preprocessing.py
 ```
 
 Expected inputs:
-- `raw_games/<game>_per_frame.zip` (or extracted `raw_games/<game>/`)
-- `raw_games/<game>/<game>.csv`
-- `raw_games/<game>/tagged_images/frame_XXXXXX.jpg`
+- CSV-labeled games:
+	- `raw_games/<game>/<game>.csv` (must include columns `from_frame` and `fen`)
+	- `raw_games/<game>/tagged_images/frame_XXXXXX.jpg`
+
+- PGN-only games:
+	- `raw_games/<game>/<game>.pgn`
+	- `raw_games/<game>/images/frame_XXXXXX.(jpg|png)`
+
+Notes:
+- If you have a zip like `raw_games/<game>_per_frame.zip`, extract it to `raw_games/<game>/...` first. The helper `unzip_folder()` exists in `preprocessing.py`, and there's also `unzip.py` you can use for safe extraction.
+- The script prints per-game progress (CSV frame counts and PGN diff progress).
 
 ### Training
 
 `train.py` trains a ResNet18 classifier on `final_dataset/train` and `final_dataset/val`, then saves:
 - `chess_model.pth`
 - `learning_curves.png`
+
+Pretrained weights in this repo (optional):
+- `chess_model_without_pgn.pth`
+- `chess_model_koral.pth`
+
+`predict.py` and `evaluate.py` currently load `chess_model.pth`, so either rename the model you want to use to `chess_model.pth` or edit the model path in those scripts.
 
 Run:
 
@@ -98,4 +112,4 @@ Output:
 ## Notes
 
 - If you see import errors in VS Code/Pylance, make sure VS Code is using the same conda environment (`chessboard-squares`).
-- Folder order matters: `predict.py` expects `CLASSES` to match the folder ordering in `final_dataset/train`.
+- Folder order matters: `predict.py` expects `CLASSES` to match the class folder ordering used by `torchvision.datasets.ImageFolder` (usually alphabetical by folder name).
