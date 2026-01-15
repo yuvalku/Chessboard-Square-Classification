@@ -63,9 +63,10 @@ raw_games/
 ```
 
 `preprocessing.py`:
+
 - Scans `raw_games/` for games in two supported layouts:
-	- CSV-labeled games: `<game>.csv` + `tagged_images/`
-	- PGN-only games: `<game>.pgn` + `images/` (frames are auto-aligned to moves using simple motion peaks)
+  - CSV-labeled games: `<game>.csv` + `tagged_images/`
+  - PGN-only games: `<game>.pgn` + `images/` (frames are auto-aligned to moves using simple motion peaks)
 - Builds `final_dataset/{train,val,test}/<class>/*.png` directly by slicing each frame into 8×8 overlapping tiles
 - Adds PGN-only generated frames to **train only** (keeps val/test as strictly CSV-labeled)
 
@@ -76,44 +77,53 @@ python preprocessing.py
 ```
 
 Expected inputs:
+
 - CSV-labeled games:
-	- `raw_games/<game>/<game>.csv` (must include columns `from_frame` and `fen`)
-	- `raw_games/<game>/tagged_images/frame_XXXXXX.jpg`
+
+  - `raw_games/<game>/<game>.csv` (must include columns `from_frame` and `fen`)
+  - `raw_games/<game>/tagged_images/frame_XXXXXX.jpg`
 
 - PGN-only games:
-	- `raw_games/<game>/<game>.pgn`
-	- `raw_games/<game>/images/frame_XXXXXX.(jpg|png)`
+  - `raw_games/<game>/<game>.pgn`
+  - `raw_games/<game>/images/frame_XXXXXX.(jpg|png)`
 
 Notes:
+
 - If you have a zip like `raw_games/<game>_per_frame.zip`, extract it to `raw_games/<game>/...` first. The helper `unzip_folder()` exists in `preprocessing.py`, and there's also `unzip.py` you can use for safe extraction.
 - The script prints per-game progress (CSV frame counts and PGN diff progress).
 
 ### Training
 
 Prerequisite: run `python preprocessing.py` first so you have:
+
 - `final_dataset/train/<class>/*.png`
 - `final_dataset/val/<class>/*.png`
 
 `train.py` trains a ResNet18 classifier (ImageNet-pretrained backbone) on `final_dataset/train` and `final_dataset/val`, then saves:
+
 - `chess_model.pth` (PyTorch `state_dict`)
 - `learning_curves.png`
 
 Notes:
+
 - The first time you run training, torchvision may download ResNet18 pretrained weights (requires internet) unless they are already cached.
 - Class order comes from `torchvision.datasets.ImageFolder` (alphabetical by folder name). If you rename class folders, retrain.
 - Hyperparameters like `num_epochs`, `batch_size`, and learning rate are currently set inside `train.py`.
 
 Pretrained weights in this repo (optional):
+
 - `chess_model_with_pgn.pth`
 - `chess_model_without_pgn.pth`
 - `chess_model_koral.pth`
 
 Model file formats:
+
 - `train.py` saves a plain `state_dict`.
-- Some provided `.pth` files may be *checkpoint dicts* that include metadata keys like `epoch`, `model_state`, `optim_state`, `history`, `classes`.
+- Some provided `.pth` files may be _checkpoint dicts_ that include metadata keys like `epoch`, `model_state`, `optim_state`, `history`, `classes`.
 - `predict.py` was updated to handle both formats (it extracts `model_state`/`state_dict` automatically).
 
 Compatibility note:
+
 - `evaluate.py` currently expects a plain `state_dict` file (like `chess_model.pth`). If you want to evaluate a checkpoint dict, either use `chess_model.pth` or update `evaluate.py` to extract `model_state` similarly to `predict.py`.
 
 Run:
@@ -137,19 +147,21 @@ python evaluate.py
 `predict.py` loads a model, slices an input image into 8×8 tiles (same overlap idea as training), predicts a class per tile, and outputs a FEN string.
 
 By default it will auto-search for a model in this order (first match wins):
+
 - `models/chess_model.pth`, `chess_model.pth`
 - `models/chess_model_without_pgn.pth`, `chess_model_without_pgn.pth`
 - `models/chess_model_with_pgn.pth`, `chess_model_with_pgn.pth`
 - `models/chess_model_koral.pth`, `chess_model_koral.pth`
 
-1) Edit the image path inside the script (`img_path` near the bottom).
-2) Run (recommended on Windows):
+1. Edit the image path inside the script (`img_path` near the bottom).
+2. Run (recommended on Windows):
 
 ```powershell
 python .\predict.py
 ```
 
 Output:
+
 - Printed `Predicted FEN: ...`
 - `results/final_board_<image_name>.png` (board visualization with red X marks on low-confidence squares)
 
