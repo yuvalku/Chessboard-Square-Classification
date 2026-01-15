@@ -25,9 +25,57 @@ GLYPH_MAP = {
 # --- פונקציות עזר ---
 
 def load_model(model_path, device):
+    checkpoint = torch.load(model_path, map_location=device)
+
+    classes = None
+    state_dict = None
+
+    if isinstance(checkpoint, dict):
+        classes = checkpoint.get("classes")
+        for key in ("model_state", "model_state_dict", "state_dict", "model"):
+            value = checkpoint.get(key)
+            if isinstance(value, dict):
+                state_dict = value
+                break
+
+        if state_dict is None:
+            tensor_items = {k: v for k, v in checkpoint.items() if torch.is_tensor(v)}
+            if tensor_items:
+                state_dict = tensor_items
+    else:
+        state_dict = checkpoint
+
+    if not isinstance(state_dict, dict) or not state_dict:
+        raise ValueError(
+            f"Unsupported checkpoint format in {model_path}. Expected a state_dict or a dict containing 'model_state'/'state_dict'."
+        )
+
+    # Common when saved with DataParallel
+    state_dict = {
+        (k[7:] if k.startswith("module.") else k): v
+        for k, v in state_dict.items()
+    }
+
+    num_classes = 13
+    if isinstance(classes, (list, tuple)) and len(classes) > 0:
+        num_classes = len(classes)
+    if "fc.weight" in state_dict and hasattr(state_dict["fc.weight"], "shape"):
+        num_classes = int(state_dict["fc.weight"].shape[0])
+
     model = models.resnet18()
-    model.fc = nn.Linear(model.fc.in_features, 13)
-    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.fc = nn.Linear(model.fc.in_features, num_classes)
+
+    missing, unexpected = model.load_state_dict(state_dict, strict=False)
+    bad_missing = [k for k in missing if not k.startswith("fc.")]
+    if bad_missing:
+        raise RuntimeError(
+            "Failed to load model weights. Missing keys (excluding classifier): "
+            + ", ".join(bad_missing)
+        )
+    if unexpected:
+        # Usually harmless (e.g., extra EMA/metadata keys), but surface it.
+        print("Warning: unexpected keys in checkpoint:", unexpected)
+
     model.to(device)
     model.eval()
     return model
@@ -147,12 +195,27 @@ def visual_board_from_matrix(
 # --- הרצה ---
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = load_model('models/chess_model_with_pgn.pth', device)
+    candidate_model_paths = [
+        os.path.join("models", "chess_model_without_pgn.pth"),
+        "chess_model_without_pgn.pth",
+        os.path.join("models", "chess_model_with_pgn.pth"),
+        "chess_model_with_pgn.pth",
+        os.path.join("models", "chess_model_koral.pth"),
+        "chess_model_koral.pth",
+    ]
+    model_path = next((p for p in candidate_model_paths if os.path.exists(p)), None)
+    if model_path is None:
+        raise FileNotFoundError(
+            "Model file not found. Looked for: " + ", ".join(candidate_model_paths)
+        )
+
+    model = load_model(model_path, device)
     
-    img_path = 'test_predict/game2_per_frame_frame_001740.jpg'
+    img_path = "test_predict/game2_per_frame_frame_000856.jpg"
+    image_name = os.path.splitext(os.path.basename(img_path))[0]
     
     matrix = process_and_predict(img_path, model, device)
     fen = matrix_to_fen(matrix)
     
     print(f"Predicted FEN: {fen}")
-    visual_board_from_matrix(matrix, out_path='./results/final_board.png')
+    visual_board_from_matrix(matrix, out_path=f'./results/final_board_{image_name}.png')
