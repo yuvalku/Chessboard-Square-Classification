@@ -122,9 +122,55 @@ Model file formats:
 - Some provided `.pth` files may be _checkpoint dicts_ that include metadata keys like `epoch`, `model_state`, `optim_state`, `history`, `classes`.
 - `predict.py` was updated to handle both formats (it extracts `model_state`/`state_dict` automatically).
 
-Compatibility note:
+#### Training on Google Colab (GPU) using `train_colab.py`
 
-- `evaluate.py` currently expects a plain `state_dict` file (like `chess_model.pth`). If you want to evaluate a checkpoint dict, either use `chess_model.pth` or update `evaluate.py` to extract `model_state` similarly to `predict.py`.
+If you want faster training (GPU), use `train_colab.py`. It is designed to:
+
+- Run on Colab with a GPU runtime
+- Save outputs persistently to Google Drive (so you don't lose them when the session ends)
+
+1. Open a Colab notebook and enable GPU:
+
+- **Runtime → Change runtime type → Hardware accelerator: GPU**
+
+2. Get the project code into Colab (one option):
+
+```bash
+git clone https://github.com/yuvalku/Chessboard-Square-Classification.git
+cd Chessboard-Square-Classification
+git checkout yuval_new
+```
+
+3. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+4. Make sure `final_dataset/` exists in the repo folder on Colab.
+
+`train_colab.py` expects these folders to exist **next to the script**:
+
+- `final_dataset/train/...`
+- `final_dataset/val/...`
+
+If you created `final_dataset/` locally, upload/copy it into the Colab workspace repo folder.
+
+5. Run training:
+
+```bash
+python train_colab.py
+```
+
+Outputs:
+
+- If Drive is available, files are saved under: `/content/drive/MyDrive/chessboard_models/`
+- Filenames are timestamped, e.g. `chess_model_YYYYMMDD_HHMMSS.pth`, `checkpoint_last_YYYYMMDD_HHMMSS.pth`, `learning_curves_YYYYMMDD_HHMMSS.png`
+
+Notes:
+
+- `checkpoint_last_*.pth` is a checkpoint dict (contains `epoch`, `model_state`, `optim_state`, `history`, `classes`).
+- `chess_model_*.pth` is a plain `state_dict`.
 
 Run:
 
@@ -132,29 +178,20 @@ Run:
 python train.py
 ```
 
-### Evaluation + OOD (low-confidence) count
-
-`evaluate.py` evaluates the model on `final_dataset/test` and shows a confusion matrix.
-
-Run:
-
-```powershell
-python evaluate.py
-```
-
 ### Predict FEN from an image
 
 `predict.py` loads a model, slices an input image into 8×8 tiles (same overlap idea as training), predicts a class per tile, and outputs a FEN string.
 
-By default it will auto-search for a model in this order (first match wins):
+1. Edit the model path inside the script (`model_path` near the bottom).
 
-- `models/chess_model.pth`, `chess_model.pth`
-- `models/chess_model_without_pgn.pth`, `chess_model_without_pgn.pth`
-- `models/chess_model_with_pgn.pth`, `chess_model_with_pgn.pth`
-- `models/chess_model_koral.pth`, `chess_model_koral.pth`
+   - Default: `models/chess_model_with_pgn.pth`
+   - You can point it to any `.pth` file you trained/downloaded.
+   - The loader supports both:
+     - a plain PyTorch `state_dict`, and
+     - a checkpoint dict containing keys like `model_state`, `epoch`, `optim_state`, `history`, `classes`.
 
-1. Edit the image path inside the script (`img_path` near the bottom).
-2. Run (recommended on Windows):
+2. Edit the image path inside the script (`img_path` near the bottom).
+3. Run (recommended on Windows):
 
 ```powershell
 python .\predict.py

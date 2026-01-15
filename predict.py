@@ -195,21 +195,8 @@ def visual_board_from_matrix(
 # --- הרצה ---
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    candidate_model_paths = [
-        os.path.join("models", "chess_model.pth"),
-        "chess_model.pth",
-        os.path.join("models", "chess_model_without_pgn.pth"),
-        "chess_model_without_pgn.pth",
-        os.path.join("models", "chess_model_with_pgn.pth"),
-        "chess_model_with_pgn.pth",
-        os.path.join("models", "chess_model_koral.pth"),
-        "chess_model_koral.pth",
-    ]
-    model_path = next((p for p in candidate_model_paths if os.path.exists(p)), None)
-    if model_path is None:
-        raise FileNotFoundError(
-            "Model file not found. Looked for: " + ", ".join(candidate_model_paths)
-        )
+    # change if needed
+    model_path = "models/chess_model_with_pgn.pth"
 
     model = load_model(model_path, device)
     
