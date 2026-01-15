@@ -196,6 +196,8 @@ def visual_board_from_matrix(
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     candidate_model_paths = [
+        os.path.join("models", "chess_model.pth"),
+        "chess_model.pth",
         os.path.join("models", "chess_model_without_pgn.pth"),
         "chess_model_without_pgn.pth",
         os.path.join("models", "chess_model_with_pgn.pth"),

@@ -40,6 +40,28 @@ Running `./preprocessing.py` or `./preprocessing` may do nothing if `.py` file a
 
 ### Data preprocessing / dataset creation
 
+#### Download the `raw_games/` data (required)
+
+The training/validation/test dataset is generated from game folders under `raw_games/`.
+This repo does not include the full `raw_games/` directory in Git (it's large), so you must download it separately.
+
+- Open the Google Drive folder link in `raw_games_link.txt`
+- Download the `raw_games` folder (or zip) from Drive
+- Place it at the repo root so the path is exactly: `raw_games/<game>/...`
+
+After downloading, you should have a structure similar to:
+
+```
+raw_games/
+	game2/
+		game2.csv
+		tagged_images/
+	game10/
+		game10.pgn
+		images/
+	...
+```
+
 `preprocessing.py`:
 - Scans `raw_games/` for games in two supported layouts:
 	- CSV-labeled games: `<game>.csv` + `tagged_images/`
@@ -68,15 +90,31 @@ Notes:
 
 ### Training
 
-`train.py` trains a ResNet18 classifier on `final_dataset/train` and `final_dataset/val`, then saves:
-- `chess_model.pth`
+Prerequisite: run `python preprocessing.py` first so you have:
+- `final_dataset/train/<class>/*.png`
+- `final_dataset/val/<class>/*.png`
+
+`train.py` trains a ResNet18 classifier (ImageNet-pretrained backbone) on `final_dataset/train` and `final_dataset/val`, then saves:
+- `chess_model.pth` (PyTorch `state_dict`)
 - `learning_curves.png`
 
+Notes:
+- The first time you run training, torchvision may download ResNet18 pretrained weights (requires internet) unless they are already cached.
+- Class order comes from `torchvision.datasets.ImageFolder` (alphabetical by folder name). If you rename class folders, retrain.
+- Hyperparameters like `num_epochs`, `batch_size`, and learning rate are currently set inside `train.py`.
+
 Pretrained weights in this repo (optional):
+- `chess_model_with_pgn.pth`
 - `chess_model_without_pgn.pth`
 - `chess_model_koral.pth`
 
-`predict.py` and `evaluate.py` currently load `chess_model.pth`, so either rename the model you want to use to `chess_model.pth` or edit the model path in those scripts.
+Model file formats:
+- `train.py` saves a plain `state_dict`.
+- Some provided `.pth` files may be *checkpoint dicts* that include metadata keys like `epoch`, `model_state`, `optim_state`, `history`, `classes`.
+- `predict.py` was updated to handle both formats (it extracts `model_state`/`state_dict` automatically).
+
+Compatibility note:
+- `evaluate.py` currently expects a plain `state_dict` file (like `chess_model.pth`). If you want to evaluate a checkpoint dict, either use `chess_model.pth` or update `evaluate.py` to extract `model_state` similarly to `predict.py`.
 
 Run:
 
@@ -96,18 +134,24 @@ python evaluate.py
 
 ### Predict FEN from an image
 
-`predict.py` loads `chess_model.pth`, slices an input image into 8x8 tiles (same overlap idea as training), predicts a class per tile, and outputs a FEN string.
+`predict.py` loads a model, slices an input image into 8×8 tiles (same overlap idea as training), predicts a class per tile, and outputs a FEN string.
 
-1) Edit the image path inside the script (`test_img` near the bottom).
-2) Run:
+By default it will auto-search for a model in this order (first match wins):
+- `models/chess_model.pth`, `chess_model.pth`
+- `models/chess_model_without_pgn.pth`, `chess_model_without_pgn.pth`
+- `models/chess_model_with_pgn.pth`, `chess_model_with_pgn.pth`
+- `models/chess_model_koral.pth`, `chess_model_koral.pth`
+
+1) Edit the image path inside the script (`img_path` near the bottom).
+2) Run (recommended on Windows):
 
 ```powershell
-python predict.py
+python .\predict.py
 ```
 
 Output:
 - Printed `Predicted FEN: ...`
-- `output_visual.png` (board visualization with red X marks on low-confidence squares)
+- `results/final_board_<image_name>.png` (board visualization with red X marks on low-confidence squares)
 
 ## Notes
 
