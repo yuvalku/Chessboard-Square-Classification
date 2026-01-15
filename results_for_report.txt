@@ -27,3 +27,29 @@ Training Complete. Model saved as chess_model.pth
 Figure(1200x500)
 
 with PGN:
+Epoch 1/12 | train Loss: 0.4585 Acc: 0.7404
+Epoch 1/12 | val Loss: 0.1032 Acc: 0.9737
+Epoch 2/12 | train Loss: 0.1964 Acc: 0.8505
+Epoch 2/12 | val Loss: 0.0949 Acc: 0.9697
+Epoch 3/12 | train Loss: 0.1457 Acc: 0.8795
+Epoch 3/12 | val Loss: 0.0432 Acc: 0.9865
+Epoch 4/12 | train Loss: 0.1231 Acc: 0.8920
+Epoch 4/12 | val Loss: 0.1053 Acc: 0.9761
+Epoch 5/12 | train Loss: 0.1078 Acc: 0.9038
+Epoch 5/12 | val Loss: 0.0475 Acc: 0.9884
+Epoch 6/12 | train Loss: 0.0913 Acc: 0.9128
+Epoch 6/12 | val Loss: 0.0632 Acc: 0.9792
+Epoch 7/12 | train Loss: 0.0836 Acc: 0.9188
+Epoch 7/12 | val Loss: 0.0401 Acc: 0.9865
+Epoch 8/12 | train Loss: 0.0771 Acc: 0.9231
+Epoch 8/12 | val Loss: 0.0560 Acc: 0.9828
+Epoch 9/12 | train Loss: 0.0713 Acc: 0.9271
+Epoch 9/12 | val Loss: 0.0288 Acc: 0.9923
+Epoch 10/12 | train Loss: 0.0688 Acc: 0.9332
+Epoch 10/12 | val Loss: 0.0357 Acc: 0.9893
+Epoch 11/12 | train Loss: 0.0622 Acc: 0.9357
+Epoch 11/12 | val Loss: 0.0301 Acc: 0.9926
+Epoch 12/12 | train Loss: 0.0594 Acc: 0.9378
+Epoch 12/12 | val Loss: 0.0325 Acc: 0.9933
+
+
