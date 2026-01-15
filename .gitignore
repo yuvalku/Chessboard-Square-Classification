@@ -31,3 +31,8 @@ __pycache__/
 *.zip
 raw_games/
 
+
+# datasets / large zips
+final_dataset.zip
+final_dataset/
+
