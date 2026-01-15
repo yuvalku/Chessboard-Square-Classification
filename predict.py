@@ -147,7 +147,7 @@ def visual_board_from_matrix(
 # --- הרצה ---
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = load_model('chess_model.pth', device)
+    model = load_model('chess_model_with_pgn.pth', device)
     
     img_path = 'test_predict/game2_per_frame_frame_001740.jpg'
     
