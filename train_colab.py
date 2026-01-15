@@ -128,6 +128,11 @@ def train_model(resume=False):
             "val": DataLoader(image_datasets["val"], batch_size=32, shuffle=False),
         }
 
+        print("Datasets loaded:", {k: len(v) for k, v in image_datasets.items()})
+        print("Testing one train batch...")
+        xb, yb = next(iter(dataloaders["train"]))
+        print("First batch OK:", xb.shape, yb.shape)
+
         # Class weights
         class_counts = np.array([
             sum(

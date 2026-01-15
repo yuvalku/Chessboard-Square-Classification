@@ -16,3 +16,7 @@ __pycache__/
 # model weights
 *.pth
 
+
+# model weights
+*.pth
+
