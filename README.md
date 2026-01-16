@@ -245,8 +245,13 @@ Output:
 
 - If `debug_compare=True`: saves a **side-by-side** image (input on the left, predicted board render on the right) to `results/`.
   - Example: `results/debug_game2_frame_002472.jpg`
+
+![debug_compare=True (side-by-side) example](assets/readme/debug_game2_frame_002472.jpg)
+
 - If `debug_compare=False`: saves **only the predicted board render** (no input image) to `results/`.
   - Example: `results/pred_game2_frame_002472.png`
+
+![debug_compare=False (predicted board only) example](assets/readme/pred_game2_frame_002472.png)
 
 The predicted board render marks rejected/uncertain squares with a red X.
 

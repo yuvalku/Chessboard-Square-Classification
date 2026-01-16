@@ -232,7 +232,7 @@ if __name__ == "__main__":
         img_path = os.path.join(input_folder, img_name)
         raw_img = np.array(Image.open(img_path).convert("RGB"))
         
-        debug_compare = True
+        debug_compare = False
 
         # Predict board matrix
         board_tensor = predict_board(raw_img, debug_compare=debug_compare)

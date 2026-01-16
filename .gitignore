@@ -13,6 +13,9 @@ __pycache__/
 *.png
 *.pgn
 
+# Allow documentation images used by README
+!assets/readme/**
+
 # large artifacts
 *.zip
 raw_games/
