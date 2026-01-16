@@ -141,14 +141,15 @@ chessboard-project-colab/
 
 Inside it, put:
 
-- `train_colab.py` (copy it from this repo)
-- `final_dataset/` (your prepared dataset)
+- Open the `chessboard-project-colab/` folder.
+- Copy `train.py` from this repo into `chessboard-project-colab/`.
+- Place your prepared `final_dataset/` folder inside `chessboard-project-colab/`.
 
 So the structure looks like:
 
 ```
 chessboard-project-colab/
-  train_colab.py
+  train.py
   final_dataset/
     train/
       <class_name>/
@@ -195,7 +196,7 @@ Open `train_model.ipynb` in Google Colab. The notebook mounts Drive, unzips `che
 - Mount Drive
 - Unzip `chessboard-project-colab.zip` into `/content/`
 - Install dependencies
-- Run `python /content/chessboard-project-colab/train_colab.py`
+- Run `python /content/chessboard-project-colab/train.py`
 
 Make sure GPU is enabled:
 
@@ -215,6 +216,20 @@ Notes:
 
 `predict.py` loads a model, slices an input image into 8×8 tiles (same overlap idea as training), predicts a class per tile, and outputs a FEN string.
 
+#### Expected input image
+
+For best results, the input should be a **single chessboard** image where the board is clearly visible.
+
+- Recommended: **top-down (or near top-down)** view of the board.
+- The board should be **roughly centered** and **not heavily perspective-skewed**.
+- Avoid hands/pieces-in-motion/occlusions when capturing the image.
+- Lighting should be consistent (avoid heavy glare/shadows).
+
+Important: the current pipeline does a simple 8×8 grid crop after resizing the image to `800×800`. It does **not** detect corners / do perspective correction.
+So if your photo includes a lot of background or the board is rotated/skewed, grid cells may not line up with real squares.
+
+#### Usage
+
 1. Edit the model path inside the script (`model_path` near the bottom).
 
    - Default: `models/chess_model_with_pgn.pth`
@@ -232,8 +247,10 @@ python .\predict.py
 
 Output:
 
-- Printed `Predicted FEN: ...`
-- `results/final_board_<image_name>.png` (board visualization with red X marks on low-confidence squares)
+- Printed predicted board matrix and FEN string.
+- `results/final_board_state.png` (rendered board; squares rejected as OOD are marked with a red X).
+
+Tip: if many squares get a red X, try a cleaner/cropped top-down board image.
 
 ## Notes
 

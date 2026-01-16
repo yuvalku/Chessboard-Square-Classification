@@ -18,8 +18,8 @@ import numpy as np
 import os
 from tqdm import tqdm
 
-CONF_THRESHOLD = 0.75
-ENTROPY_THRESHOLD = 1.0
+CONF_THRESHOLD = 0.85
+ENTROPY_THRESHOLD = 0.6
 
 def is_tensor_visually_valid(tensor):
     """
