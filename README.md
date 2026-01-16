@@ -243,15 +243,15 @@ Output:
 
 `predict.py` supports a `debug_compare` flag when calling `predict_board(...)`.
 
-- If `debug_compare=True`: saves a **side-by-side** image (input on the left, predicted board render on the right) to `results/`.
-  - Example: `results/debug_game2_frame_002472.jpg`
-
-![debug_compare=True (side-by-side) example](assets/readme/debug_game2_frame_002472.jpg)
-
 - If `debug_compare=False`: saves **only the predicted board render** (no input image) to `results/`.
   - Example: `results/pred_game2_frame_002472.png`
 
-![debug_compare=False (predicted board only) example](assets/readme/pred_game2_frame_002472.png)
+<img src="assets/readme/pred_game2_frame_002472.png" alt="debug_compare=False (predicted board only) example" width="350" />
+
+- If `debug_compare=True`: saves a **side-by-side** image (input on the left, predicted board render on the right) to `results/`.
+  - Example: `results/debug_game2_frame_002472.jpg`
+
+<img src="assets/readme/debug_game2_frame_002472.jpg" alt="debug_compare=True (side-by-side) example" width="650" />
 
 The predicted board render marks rejected/uncertain squares with a red X.
 
