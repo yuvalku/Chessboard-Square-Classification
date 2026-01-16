@@ -2,15 +2,11 @@ torch
 torchvision
 opencv-python
 numpy
-pandas<2.3
+pandas
 Pillow
 scikit-learn
 matplotlib
 seaborn
-
-# Optional (only needed if you use split-folders in your own workflow)
-split-folders
-
-# Provides the `chess` module (used as `import chess.pgn`)
+tqdm
 python-chess
 scipy

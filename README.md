@@ -101,8 +101,11 @@ Prerequisite: run `python preprocessing.py` first so you have:
 
 `train.py` trains a ResNet18 classifier (ImageNet-pretrained backbone) on `final_dataset/train` and `final_dataset/val`, then saves:
 
-- `chess_model.pth` (PyTorch `state_dict`)
-- `learning_curves.png`
+- Timestamped artifacts under `models/` (or Google Drive on Colab), including:
+  - `chess_model_<run_id>.pth` (PyTorch `state_dict`)
+  - `checkpoint_last_<run_id>.pth` (checkpoint dict with epoch/optimizer/history/classes)
+  - `learning_curves_<run_id>.png`
+  - `train_log_<run_id>.txt`
 
 Notes:
 
@@ -122,9 +125,9 @@ Model file formats:
 - Some provided `.pth` files may be _checkpoint dicts_ that include metadata keys like `epoch`, `model_state`, `optim_state`, `history`, `classes`.
 - `predict.py` was updated to handle both formats (it extracts `model_state`/`state_dict` automatically).
 
-#### Training on Google Colab (GPU) using `train_colab.py`
+#### Training on Google Colab (GPU) using `train_model.ipynb`
 
-If you want faster training (GPU), use `train_colab.py`. It is designed to run in Colab and save outputs to Google Drive.
+If you want faster training (GPU), use the Colab notebook `train_model.ipynb`. It unzips a prepared project folder from Google Drive and runs training.
 
 This repo’s recommended Colab workflow is **Drive-first**:
 
@@ -185,14 +188,14 @@ This creates `final_dataset/train`, `final_dataset/val`, `final_dataset/test` au
 - Zip the whole `chessboard-project-colab/` folder (so the zip contains the folder, not just its contents).
 - Upload the zip to your Google Drive (for example to `MyDrive/`).
 
-4. Train in Colab using `train_colab.ipynb`
+4. Train in Colab using `train_model.ipynb`
 
-You will use a Colab notebook named `train_colab.ipynb` (you said you’ll add it later). The notebook should:
+Open `train_model.ipynb` in Google Colab. The notebook mounts Drive, unzips `chessboard-project-colab.zip` into `/content/`, and runs the trainer.
 
 - Mount Drive
-- Unzip `chessboard-project-colab.zip` into the Colab workspace
+- Unzip `chessboard-project-colab.zip` into `/content/`
 - Install dependencies
-- Run `python train_colab.py`
+- Run `python /content/chessboard-project-colab/train_colab.py`
 
 Make sure GPU is enabled:
 

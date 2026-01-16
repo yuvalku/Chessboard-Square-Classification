@@ -1,3 +1,11 @@
+"""Train a ResNet18 classifier on `final_dataset` (Colab/Drive friendly).
+
+This script mirrors `train.py` but is intended to be dropped into a minimal folder
+alongside `final_dataset/` and run from a Colab notebook.
+
+Outputs are saved under Google Drive when available.
+"""
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -10,7 +18,7 @@ import matplotlib.pyplot as plt
 import sys
 from datetime import datetime
 
-# Detect if running in Colab notebook (only then drive.mount is possible)
+# Detect if running inside a Colab notebook (only then Drive mount is available).
 try:
     from google.colab import drive  # type: ignore
     from IPython import get_ipython  # type: ignore
@@ -34,10 +42,11 @@ class Tee:
 
 
 def train_model(resume=False):
+    """Train the model and write artifacts under `models/` or Drive."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-    # --- Persistent save directory ---
+    # Choose a persistent save directory.
     drive_root = "/content/drive/MyDrive"
     default_drive_save_dir = os.path.join(drive_root, "chessboard_models")
     local_save_dir = os.path.join(BASE_DIR, "models")
@@ -52,7 +61,7 @@ def train_model(resume=False):
 
     os.makedirs(save_dir, exist_ok=True)
 
-    # --- Timestamped filenames (never overwrite) ---
+    # Timestamped filenames (avoid overwriting previous runs).
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     model_path = os.path.join(save_dir, f"chess_model_{run_id}.pth")
@@ -60,14 +69,14 @@ def train_model(resume=False):
     curves_path = os.path.join(save_dir, f"learning_curves_{run_id}.png")
     log_path = os.path.join(save_dir, f"train_log_{run_id}.txt")
 
-    # Optional: also keep "latest" copies for convenience
+    # Optional: also keep "latest" copies for convenience.
     SAVE_LATEST = True
     latest_model_path = os.path.join(save_dir, "chess_model_latest.pth")
     latest_ckpt_path = os.path.join(save_dir, "checkpoint_latest.pth")
     latest_curves_path = os.path.join(save_dir, "learning_curves_latest.png")
     latest_log_path = os.path.join(save_dir, "train_log_latest.txt")
 
-    # Redirect stdout/stderr to a per-run log (and optionally a latest log)
+    # Redirect stdout/stderr to a per-run log (and optionally a latest log).
     original_stdout, original_stderr = sys.stdout, sys.stderr
     run_log_file = open(log_path, "a", encoding="utf-8")
 
@@ -91,7 +100,7 @@ def train_model(resume=False):
     print("=" * 90)
 
     try:
-        # Transforms
+        # Data transforms
         data_transforms = {
             "train": transforms.Compose([
                 transforms.Resize((224, 224)),
@@ -133,7 +142,7 @@ def train_model(resume=False):
         xb, yb = next(iter(dataloaders["train"]))
         print("First batch OK:", xb.shape, yb.shape)
 
-        # Class weights
+        # Class weights (inverse frequency) to reduce imbalance.
         class_counts = np.array([
             sum(
                 os.path.isfile(os.path.join(train_root, c, f))
@@ -147,7 +156,7 @@ def train_model(resume=False):
         weights = weights / weights.sum() * len(weights)
         weights_tensor = torch.FloatTensor(weights).to(device)
 
-        # Model (no deprecation warning)
+        # Model
         model = resnet18(weights=ResNet18_Weights.DEFAULT)
         num_classes = len(image_datasets["train"].classes)
         model.fc = nn.Linear(model.fc.in_features, num_classes)
@@ -160,7 +169,7 @@ def train_model(resume=False):
         num_epochs = 20
         start_epoch = 0
 
-        # Resume: by default resume from "latest" checkpoint if it exists
+        # Resume: by default resume from the "latest" checkpoint if it exists.
         if resume and SAVE_LATEST and os.path.exists(latest_ckpt_path):
             ckpt = torch.load(latest_ckpt_path, map_location=device)
             model.load_state_dict(ckpt["model_state"])
@@ -240,7 +249,7 @@ def train_model(resume=False):
 
         print(f"Training Complete. Model saved as {model_path}")
 
-        # Plot and save (timestamped)
+        # Plot and save learning curves
         plt.figure(figsize=(12, 5))
 
         plt.subplot(1, 2, 1)
