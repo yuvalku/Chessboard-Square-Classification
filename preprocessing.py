@@ -1,264 +1,55 @@
 import os
 import zipfile
-import random
 import shutil
 import re
+import random
 import pandas as pd
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageStat
 import chess.pgn
+import scipy.signal
+import scipy.ndimage
+import cv2
 
-PRINT_EVERY_DIFF = 500          # progress while computing motion scores
-PRINT_EVERY_TILING = 50         # progress while slicing frames into tiles
-PRINT_EVERY_GATHER = 200        # progress while reading CSV rows
+# --- CONFIGURATION ---
+MOTION_DOWNSAMPLE = 16          
+MIN_MOVE_DURATION_FRAMES = 10   
+CENTER_CHECK_RADIUS = 0.20      
 
-# PGN controls (to avoid exploding dataset size)
-PGN_SAMPLE_EVERY = 20           # was 5 (too many). Increase for long videos.
-PGN_SKIP_MARGIN = 10            # skip frames near move boundaries
-PGN_MIN_GAP = 10                # minimum spacing between chosen motion peaks
-PGN_MAX_PER_SEGMENT = 25        # cap frames per PGN state segment
+# --- MANUAL OVERRIDES (The "Escape Hatch") ---
+# If detection fails, force the correct perspective here.
+# True = Black at Bottom (Flipped). False = White at Bottom (Standard).
+MANUAL_ORIENTATION_MAP = {
+    "game12": False, # Example: Set to True if game12 is actually flipped
+    "game13": True,  # Example: Force game13 to be flipped
+}
 
-# Motion scoring controls (faster)
-MOTION_DOWNSAMPLE = 20          # was 10. Bigger -> faster for motion detection
-
-
-# --- Helper functions ---
+# --- HELPER FUNCTIONS ---
 
 def discover_games(base_raw_dir="raw_games"):
-    """
-    Supports:
-    - Zips named like `<game>_per_frame.zip`
-    - Extracted folders with `<game>.csv` + `tagged_images/`
-    - PGN-only folders with `<game>.pgn` + `images/`
-    """
     games = set()
-
-    if not os.path.isdir(base_raw_dir):
-        return []
-
+    if not os.path.isdir(base_raw_dir): return []
     for name in os.listdir(base_raw_dir):
-        full_path = os.path.join(base_raw_dir, name)
-
-        if os.path.isfile(full_path) and name.endswith("_per_frame.zip"):
+        if name.endswith("_per_frame.zip"):
             games.add(name[: -len("_per_frame.zip")])
-            continue
+        elif os.path.isdir(os.path.join(base_raw_dir, name)):
+            games.add(name)
+    return sorted(list(games))
 
-        if os.path.isdir(full_path):
-            game_name = name
-            csv_path = os.path.join(full_path, f"{game_name}.csv")
-            pgn_path = os.path.join(full_path, f"{game_name}.pgn")
-            tagged_dir = os.path.join(full_path, "tagged_images")
-            images_dir = os.path.join(full_path, "images")
-
-            if os.path.isfile(csv_path) and os.path.isdir(tagged_dir):
-                games.add(game_name)
-                continue
-
-            if os.path.isfile(pgn_path) and os.path.isdir(images_dir):
-                games.add(game_name)
-                continue
-
-    return sorted(games)
-
-
-def unzip_folder(game_name, base_raw_dir="raw_games", remove_zip=False):
-    """
-    Extracts `{game_name}_per_frame.zip` into `raw_games/game_name`.
-    Skips if already extracted.
-    """
+def unzip_folder(game_name, base_raw_dir="raw_games"):
     zip_path = os.path.join(base_raw_dir, f"{game_name}_per_frame.zip")
     dest_dir = os.path.join(base_raw_dir, game_name)
-
-    expected_csv = os.path.join(dest_dir, f"{game_name}.csv")
-    expected_images_dir = os.path.join(dest_dir, "tagged_images")
-
-    if os.path.isdir(dest_dir) and os.path.isfile(expected_csv) and os.path.isdir(expected_images_dir):
-        return
-
-    if not os.path.isfile(zip_path):
-        return
-
+    if os.path.exists(os.path.join(dest_dir, "images")): return
+    if not os.path.isfile(zip_path): return
+    print(f"Unzipping {game_name}...")
     os.makedirs(dest_dir, exist_ok=True)
-
-    dest_real = os.path.realpath(dest_dir)
     with zipfile.ZipFile(zip_path, "r") as zf:
-        for member in zf.infolist():
-            target_path = os.path.realpath(os.path.join(dest_real, member.filename))
-            if not (target_path == dest_real or target_path.startswith(dest_real + os.sep)):
-                raise ValueError(f"Unsafe path in zip: {member.filename}")
         zf.extractall(dest_dir)
-
-    if remove_zip:
-        try:
-            os.remove(zip_path)
-        except OSError as e:
-            print(f"Could not remove zip {zip_path}: {e}")
-
-
-def parse_fen_to_matrix(fen):
-    board_part = fen.split(" ")[0]
-    board_part = board_part.replace("m", "r")  # Fix 'm' -> 'r' (rook)
-
-    rows = board_part.split("/")
-    mapping = {
-        "P": "white_pawn", "N": "white_knight", "B": "white_bishop",
-        "R": "white_rook", "Q": "white_queen", "K": "white_king",
-        "p": "black_pawn", "n": "black_knight", "b": "black_bishop",
-        "r": "black_rook", "q": "black_queen", "k": "black_king",
-    }
-
-    matrix = []
-    for row in rows:
-        board_row = []
-        for char in row:
-            if char.isdigit():
-                board_row.extend(["empty"] * int(char))
-            else:
-                board_row.append(mapping.get(char, "empty"))
-        matrix.append(board_row)
-    return np.array(matrix)
-
-
-def slice_image_with_overlap(
-    game_name,
-    image_path,
-    output_root_for_split,
-    board_matrix,
-    overlap_percent=0.7,
-    final_size=(224, 224),
-):
-    try:
-        img = Image.open(image_path)
-    except Exception:
-        return
-
-    img_width, img_height = img.size
-    stride_w = img_width / 8.0
-    stride_h = img_height / 8.0
-
-    crop_w = stride_w * (1.0 + overlap_percent)
-    crop_h = stride_h * (1.0 + overlap_percent)
-
-    name_only = os.path.splitext(os.path.basename(image_path))[0]
-
-    for r in range(8):
-        for c in range(8):
-            center_x = (c * stride_w) + (stride_w / 2.0)
-            center_y = (r * stride_h) + (stride_h / 2.0)
-
-            left = center_x - (crop_w / 2.0)
-            upper = center_y - (crop_h / 2.0)
-            right = center_x + (crop_w / 2.0)
-            lower = center_y + (crop_h / 2.0)
-
-            tile = img.crop((left, upper, right, lower))
-            tile = tile.resize(final_size, Image.Resampling.LANCZOS)
-
-            label = board_matrix[r, c]
-            class_dir = os.path.join(output_root_for_split, label)
-            os.makedirs(class_dir, exist_ok=True)
-
-            tile_filename = f"{game_name}_{name_only}_r{r}_c{c}.png"
-            tile.save(os.path.join(class_dir, tile_filename))
-
-
-def gather_all_frames(base_raw_dir="raw_games"):
-    """
-    CSV-labeled frames only.
-    """
-    games = discover_games(base_raw_dir)
-    if not games:
-        print(f"No games found under: {base_raw_dir}")
-        return []
-
-    all_items = []
-    for game in games:
-        # If you still have zipped csv games, keep this enabled:
-        unzip_folder(game, base_raw_dir)
-
-        game_path = os.path.join(base_raw_dir, game)
-        csv_path = os.path.join(game_path, f"{game}.csv")
-        images_path = os.path.join(game_path, "tagged_images")
-
-        if not os.path.exists(csv_path):
-            continue
-
-        df = pd.read_csv(csv_path)
-        if "from_frame" not in df.columns or "fen" not in df.columns:
-            print(f"[CSV] Skipping {game}, missing columns: {csv_path}")
-            continue
-
-        before = len(all_items)
-        for idx, row in enumerate(df.itertuples(index=False), 1):
-            frame_num = int(getattr(row, "from_frame"))
-            fen = getattr(row, "fen")
-            img_path = os.path.join(images_path, f"frame_{frame_num:06d}.jpg")
-            if os.path.exists(img_path):
-                all_items.append({"game": game, "frame_num": frame_num, "fen": fen, "img_path": img_path})
-
-            if idx % PRINT_EVERY_GATHER == 0:
-                print(f"[CSV] {game}: read {idx}/{len(df)} rows")
-
-        added = len(all_items) - before
-        print(f"[CSV] {game}: collected {added} labeled frames")
-
-    # Deduplicate by image path
-    seen = set()
-    dedup = []
-    for item in all_items:
-        p = item["img_path"]
-        if p in seen:
-            continue
-        seen.add(p)
-        dedup.append(item)
-
-    print(f"[CSV] Total labeled frames after dedup: {len(dedup)}")
-    return dedup
-
-
-def split_frames_frame_level(items, seed=42, ratio=(0.8, 0.1, 0.1)):
-    assert abs(sum(ratio) - 1.0) < 1e-9
-    rng = random.Random(seed)
-    items_shuffled = items[:]
-    rng.shuffle(items_shuffled)
-
-    n = len(items_shuffled)
-    n_train = int(n * ratio[0])
-    n_val = int(n * ratio[1])
-
-    train_items = items_shuffled[:n_train]
-    val_items = items_shuffled[n_train:n_train + n_val]
-    test_items = items_shuffled[n_train + n_val:]
-    return train_items, val_items, test_items
-
-
-def build_dataset_from_splits(train_items, val_items, test_items, out_root="final_dataset"):
-    splits = [("train", train_items), ("val", val_items), ("test", test_items)]
-
-    for split_name, split_items in splits:
-        split_root = os.path.join(out_root, split_name)
-        os.makedirs(split_root, exist_ok=True)
-        print(f"[TILES] Building split: {split_name}, frames: {len(split_items)}")
-
-        for idx, item in enumerate(split_items, 1):
-            board_matrix = parse_fen_to_matrix(item["fen"])
-            slice_image_with_overlap(
-                game_name=item["game"],
-                image_path=item["img_path"],
-                output_root_for_split=split_root,
-                board_matrix=board_matrix,
-            )
-            if idx % PRINT_EVERY_TILING == 0 or idx == len(split_items):
-                print(f"[TILES] {split_name}: {idx}/{len(split_items)} frames processed")
-
-
-# --- PGN support ---
 
 def pgn_to_fens(pgn_path):
     with open(pgn_path, "r", encoding="utf-8", errors="ignore") as f:
         game = chess.pgn.read_game(f)
-        if game is None:
-            return []
+    if game is None: return []
     board = game.board()
     fens = [board.fen()]
     for mv in game.mainline_moves():
@@ -266,198 +57,283 @@ def pgn_to_fens(pgn_path):
         fens.append(board.fen())
     return fens
 
-
 def list_frames_in_dir(images_dir):
-    """
-    Robust: accept any .jpg/.png and sort by last number in the filename if present.
-    """
     frames = []
-    if not os.path.isdir(images_dir):
-        return frames
-
+    if not os.path.isdir(images_dir): return frames
     for name in os.listdir(images_dir):
-        n = name.lower()
-        if n.endswith((".jpg", ".jpeg", ".png")):
+        if name.lower().endswith((".jpg", ".jpeg", ".png")):
             frames.append(os.path.join(images_dir, name))
-
-    def key_fn(p):
-        base = os.path.basename(p)
-        m = re.findall(r"\d+", base)
-        return int(m[-1]) if m else base
-
-    frames.sort(key=key_fn)
+    frames.sort(key=lambda f: int(re.findall(r'\d+', os.path.basename(f))[-1]))
     return frames
 
-
-def pick_top_peaks(scores, k, min_gap=10):
-    if k <= 0:
-        return []
-    idxs = np.argsort(scores)[::-1]
-    chosen = []
-    blocked = np.zeros(len(scores), dtype=bool)
-
-    for i in idxs:
-        if len(chosen) >= k:
-            break
-        if blocked[i]:
-            continue
-        chosen.append(int(i))
-        lo = max(0, i - min_gap)
-        hi = min(len(scores) - 1, i + min_gap)
-        blocked[lo:hi + 1] = True
-
-    chosen.sort()
-    return chosen
-
-
-def compute_motion_scores_cached(frames, downsample=MOTION_DOWNSAMPLE, print_every=PRINT_EVERY_DIFF, tag=""):
-    """
-    Faster motion scoring:
-    - reads each frame once
-    - compares to previous
-    """
-    if len(frames) < 2:
-        return []
-
-    def load_small_gray(path):
-        img = Image.open(path).convert("L")
-        if downsample > 1:
-            img = img.resize((max(1, img.size[0] // downsample), max(1, img.size[1] // downsample)))
-        return np.asarray(img, dtype=np.int16)
-
+def get_motion_profile(frames, downsample=MOTION_DOWNSAMPLE):
     scores = []
-    prev = None
-    for i, p in enumerate(frames):
+    prev_array = None
+    print(f"   [Analysis] Computing motion profile for {len(frames)} frames...")
+    for p in frames:
         try:
-            cur = load_small_gray(p)
+            with Image.open(p) as img:
+                small = img.convert("L").resize((img.width // downsample, img.height // downsample))
+                curr_array = np.asarray(small, dtype=np.float32)
+                if prev_array is not None:
+                    diff = np.mean(np.abs(curr_array - prev_array))
+                    scores.append(diff)
+                else:
+                    scores.append(0.0)
+                prev_array = curr_array
         except Exception:
-            cur = None
-
-        if prev is not None and cur is not None:
-            scores.append(float(np.mean(np.abs(cur - prev))))
-        elif prev is not None:
-            scores.append(-1.0)
-
-        prev = cur
-
-        if i > 0 and (i % print_every == 0):
-            print(f"[PGN] {tag} diff progress {i}/{len(frames)-1}")
-
+            scores.append(0.0)
+    scores = np.array(scores)
+    if scores.max() > 0: scores = scores / scores.max()
     return scores
 
+def parse_fen_to_matrix(fen, flip_board=False):
+    board_part = fen.split(" ")[0].replace("m", "r") 
+    rows = board_part.split("/")
+    mapping = {"P": "white_pawn", "N": "white_knight", "B": "white_bishop", "R": "white_rook", "Q": "white_queen", "K": "white_king",
+               "p": "black_pawn", "n": "black_knight", "b": "black_bishop", "r": "black_rook", "q": "black_queen", "k": "black_king"}
+    matrix = []
+    for row in rows:
+        board_row = []
+        for char in row:
+            if char.isdigit(): board_row.extend(["empty"] * int(char))
+            else: board_row.append(mapping.get(char, "empty"))
+        matrix.append(board_row)
+    
+    np_matrix = np.array(matrix)
+    
+    if flip_board:
+        np_matrix = np.rot90(np_matrix, 2)
+        
+    return np_matrix
 
-def build_items_from_pgn_only(
-    game_name,
-    game_path,
-    sample_every=PGN_SAMPLE_EVERY,
-    skip_margin=PGN_SKIP_MARGIN,
-    min_gap=PGN_MIN_GAP,
-    max_per_segment=PGN_MAX_PER_SEGMENT,
-):
+# --- IMPROVED ORIENTATION DETECTOR ---
+
+def detect_board_orientation(image_path, game_name):
+    # 1. Check Manual Override First
+    if game_name in MANUAL_ORIENTATION_MAP:
+        forced_val = MANUAL_ORIENTATION_MAP[game_name]
+        print(f"   [Orientation] {game_name}: Manual Override -> {'FLIPPED' if forced_val else 'STANDARD'}")
+        return forced_val
+
+    # 2. Heuristic Detection (Row Comparison)
+    try:
+        with Image.open(image_path) as img:
+            gray = img.convert("L")
+            w, h = gray.size
+            stride_h = h / 8.0
+            
+            # Target Row 1 (Black Pawns in Standard) and Row 6 (White Pawns in Standard)
+            # We ignore Row 0/7 (Pieces) because they vary too much in shape. Pawns are uniform.
+            
+            # Top Pawn Row (Row 1)
+            y1_top = int(1 * stride_h)
+            y2_top = int(2 * stride_h)
+            top_row_crop = gray.crop((0, y1_top, w, y2_top))
+            
+            # Bottom Pawn Row (Row 6)
+            y1_bot = int(6 * stride_h)
+            y2_bot = int(7 * stride_h)
+            bottom_row_crop = gray.crop((0, y1_bot, w, y2_bot))
+            
+            top_mean = ImageStat.Stat(top_row_crop).mean[0]
+            bottom_mean = ImageStat.Stat(bottom_row_crop).mean[0]
+            
+            print(f"   [Orientation Debug] TopRow Brightness: {top_mean:.1f}, BottomRow Brightness: {bottom_mean:.1f}")
+            
+            # Logic:
+            # Standard: Top=Black(Dark), Bottom=White(Light) -> Bottom > Top
+            # Flipped: Top=White(Light), Bottom=Black(Dark) -> Top > Bottom
+            
+            if top_mean > (bottom_mean + 10): # Added buffer to prevent noise flipping
+                return True # Flipped (White is at top)
+            
+            return False # Standard (White is at bottom)
+    except:
+        return False
+
+# --- PROCESSING LOGIC ---
+
+def process_game_robust(game_name, base_raw_dir):
+    game_path = os.path.join(base_raw_dir, game_name)
     pgn_path = os.path.join(game_path, f"{game_name}.pgn")
-    if not os.path.isfile(pgn_path):
-        return []
+    
+    if not os.path.exists(pgn_path): return []
+    fens = pgn_to_fens(pgn_path)
+    target_count = len(fens)
+    print(f"\n[PGN] {game_name}: Expecting {target_count} moves.")
 
     images_dir = os.path.join(game_path, "images")
     frames = list_frames_in_dir(images_dir)
-    print(f"[PGN] {game_name}: found {len(frames)} frames in {images_dir}")
+    if len(frames) < 50: return []
 
-    if len(frames) < 2:
+    # 1. FIND PAUSES
+    motion_scores = get_motion_profile(frames)
+    noise_floor = np.median(motion_scores)
+    if noise_floor == 0: noise_floor = 0.005
+    
+    candidate_segments = []
+    for threshold_mult in [1.5, 2.0, 3.0, 5.0, 8.0]:
+        threshold = noise_floor * threshold_mult
+        is_stable = motion_scores <= threshold
+        structure = np.ones(MIN_MOVE_DURATION_FRAMES)
+        is_stable = scipy.ndimage.binary_opening(is_stable, structure)
+        labeled_array, num_features = scipy.ndimage.label(is_stable)
+        
+        if num_features >= target_count:
+            current_segments = []
+            for i in range(1, num_features + 1):
+                indices = np.where(labeled_array == i)[0]
+                start, end = indices[0], indices[-1]
+                duration = end - start
+                current_segments.append((start, end, duration))
+            candidate_segments = current_segments
+            break 
+            
+    if len(candidate_segments) < target_count:
+        print(f"[SKIP] {game_name}: Unstable video (Found {len(candidate_segments)}/{target_count}).")
         return []
 
-    fens = pgn_to_fens(pgn_path)
-    print(f"[PGN] {game_name}: PGN states (FENs) = {len(fens)}")
-    if len(fens) < 2:
-        return []
+    # 2. SELECT LONGEST PAUSES
+    candidate_segments.sort(key=lambda x: x[2], reverse=True)
+    best_segments = candidate_segments[:target_count] 
+    best_segments.sort(key=lambda x: x[0]) 
 
-    num_moves = len(fens) - 1
-    print(f"[PGN] {game_name}: computing motion scores for {len(frames)-1} pairs (downsample={MOTION_DOWNSAMPLE})...")
-    scores = compute_motion_scores_cached(frames, downsample=MOTION_DOWNSAMPLE, print_every=PRINT_EVERY_DIFF, tag=game_name)
+    # 3. DETECT ORIENTATION (Improved)
+    first_frame_path = frames[best_segments[0][0]]
+    is_flipped = detect_board_orientation(first_frame_path, game_name)
+    
+    if is_flipped:
+        print(f"   [Orientation] Result: BLACK perspective (flipped).")
+    else:
+        print(f"   [Orientation] Result: WHITE perspective (standard).")
 
-    boundaries = pick_top_peaks(scores, k=min(num_moves, len(scores)), min_gap=min_gap)
-    print(f"[PGN] {game_name}: moves={num_moves} | picked boundaries={len(boundaries)} | min_gap={min_gap}")
+    valid_items = []
+    for i, (start, end, duration) in enumerate(best_segments):
+        mid_idx = (start + end) // 2
+        img_path = frames[mid_idx]
+        fen = fens[i]
+        
+        valid_items.append({
+                    "game": game_name,
+                    "fen": fen,
+                    "img_path": img_path,
+                    "flipped": is_flipped 
+                })
 
-    cut_points = [-1] + boundaries + [len(frames) - 1]
+    print(f"[Result] {game_name}: Kept {len(valid_items)} / {target_count} clean frames.")
+    return valid_items
 
-    items = []
-    for seg_idx in range(len(cut_points) - 1):
-        fen_idx = seg_idx
-        if fen_idx >= len(fens):
-            break
+def validate_center_occupancy(pil_crop, label):
+    try:
+        img_arr = np.array(pil_crop.convert("L"))
+        h, w = img_arr.shape
+        roi_h = int(h * CENTER_CHECK_RADIUS)
+        roi_w = int(w * CENTER_CHECK_RADIUS)
+        y1 = (h - roi_h) // 2
+        x1 = (w - roi_w) // 2
+        center_crop = img_arr[y1:y1+roi_h, x1:x1+roi_w]
+        
+        blurred = cv2.GaussianBlur(center_crop, (5, 5), 0)
+        edges = cv2.Canny(blurred, 50, 150)
+        edge_pixels = np.count_nonzero(edges)
+        std_dev = np.std(center_crop)
+        
+        is_label_occupied = (label != "empty")
+        
+        if not is_label_occupied:
+            is_visually_occupied = (edge_pixels > 10) and (std_dev > 20)
+            if is_visually_occupied: return False 
+        else:
+            is_visually_empty = (edge_pixels < 5) and (std_dev < 15)
+            if is_visually_empty: return False 
 
-        start = cut_points[seg_idx] + 1
-        end = cut_points[seg_idx + 1]
+        return True
+    except Exception:
+        return True
 
-        start2 = min(end, start + (skip_margin if seg_idx > 0 else 0))
-        end2 = max(start2, end - (skip_margin if seg_idx < len(cut_points) - 2 else 0))
-        if end2 < start2:
-            continue
+def slice_image_with_overlap(game_name, image_path, output_root, board_matrix, overlap_percent=0.7, final_size=(224, 224)):
+    try:
+        with Image.open(image_path) as img:
+            img_width, img_height = img.size
+            stride_w = img_width / 8.0
+            stride_h = img_height / 8.0
+            crop_w = stride_w * (1.0 + overlap_percent)
+            crop_h = stride_h * (1.0 + overlap_percent)
+            name_only = os.path.splitext(os.path.basename(image_path))[0]
 
-        count = 0
-        for j in range(start2, end2 + 1, sample_every):
-            items.append({"game": game_name, "fen": fens[fen_idx], "img_path": frames[j]})
-            count += 1
-            if max_per_segment is not None and count >= max_per_segment:
-                break
+            for r in range(8):
+                for c in range(8):
+                    center_x = (c * stride_w) + (stride_w / 2.0)
+                    center_y = (r * stride_h) + (stride_h / 2.0)
+                    
+                    left = center_x - (crop_w / 2.0)
+                    upper = center_y - (crop_h / 2.0)
+                    right = center_x + (crop_w / 2.0)
+                    lower = center_y + (crop_h / 2.0)
+                    
+                    tile = img.crop((left, upper, right, lower))
+                    label = board_matrix[r, c]
+                    
+                    if validate_center_occupancy(tile, label):
+                        tile = tile.resize(final_size, Image.Resampling.LANCZOS)
+                        class_dir = os.path.join(output_root, label)
+                        os.makedirs(class_dir, exist_ok=True)
+                        tile.save(os.path.join(class_dir, f"{game_name}_{name_only}_r{r}_c{c}.jpg"), quality=90)
+    except Exception as e:
+        print(f"Error {image_path}: {e}")
 
-    print(
-        f"[PGN] {game_name}: generated {len(items)} labeled frames "
-        f"(sample_every={sample_every}, skip_margin={skip_margin}, max_per_segment={max_per_segment})"
-    )
-    return items
+# --- MAIN ---
 
-
-# --- Final run ---
-
-if __name__ == "__main__":
+def main():
     base_raw_dir = "raw_games"
     out_root = "final_dataset"
-    seed = 42
-    ratio = (0.8, 0.1, 0.1)
-
+    if os.path.exists(out_root): shutil.rmtree(out_root)
+    
     games = discover_games(base_raw_dir)
-    print(f"[INFO] Discovered games: {games}")
-
-    # Optional: skip reprocessing if dataset already exists
-    if os.path.isdir(out_root):
-        print(f"[INFO] '{out_root}' already exists. Delete it if you want to rebuild.")
-        # If you want auto-rebuild, uncomment:
-        # shutil.rmtree(out_root)
-
-    # 1) CSV-based labeled frames
-    items = gather_all_frames(base_raw_dir)
-    if not items:
-        print("[WARN] No CSV labeled frames found. Val/test may be empty.")
-
-    train_items, val_items, test_items = split_frames_frame_level(items, seed=seed, ratio=ratio)
-
-    # 2) Add PGN-only games to TRAIN only
-    pgn_added = 0
+    all_valid_items = []
+    
     for game in games:
-        game_path = os.path.join(base_raw_dir, game)
-        csv_path = os.path.join(game_path, f"{game}.csv")
+        unzip_folder(game, base_raw_dir)
+        csv_path = os.path.join(base_raw_dir, game, f"{game}.csv")
+        
+        if os.path.exists(csv_path):
+            print(f"Processing {game} via CSV...")
+            df = pd.read_csv(csv_path)
+            images_path = os.path.join(base_raw_dir, game, "tagged_images")
+            for _, row in df.iterrows():
+                frame_num = int(row['from_frame'])
+                img_p = os.path.join(images_path, f"frame_{frame_num:06d}.jpg")
+                if os.path.exists(img_p):
+                    all_valid_items.append({"game": game, "fen": row['fen'], "img_path": img_p, "flipped": False})
+        else:
+            items = process_game_robust(game, base_raw_dir)
+            all_valid_items.extend(items)
 
-        if not os.path.isfile(csv_path):
-            pgn_items = build_items_from_pgn_only(game, game_path)
-            if pgn_items:
-                train_items.extend(pgn_items)
-                pgn_added += len(pgn_items)
+    print(f"\nTotal Valid Frames Collected: {len(all_valid_items)}")
+    
+    random.seed(42)
+    random.shuffle(all_valid_items)
+    
+    n_total = len(all_valid_items)
+    n_val = int(n_total * 0.1)
+    n_test = int(n_total * 0.1)
+    n_train = n_total - n_val - n_test
+    
+    train_set = all_valid_items[:n_train]
+    val_set = all_valid_items[n_train:n_train+n_val]
+    test_set = all_valid_items[n_train+n_val:]
+    
+    print(f"Split: Train={len(train_set)}, Val={len(val_set)}, Test={len(test_set)}")
+    
+    for split_name, items in [("train", train_set), ("val", val_set), ("test", test_set)]:
+        print(f"Generating {split_name} dataset...")
+        split_root = os.path.join(out_root, split_name)
+        for it in items:
+            mat = parse_fen_to_matrix(it["fen"], flip_board=it["flipped"])
+            slice_image_with_overlap(it["game"], it["img_path"], split_root, mat)
 
-    # 3) Deduplicate train by img_path
-    seen = set()
-    train_dedup = []
-    for it in train_items:
-        p = it["img_path"]
-        if p in seen:
-            continue
-        seen.add(p)
-        train_dedup.append(it)
-    train_items = train_dedup
+    print("Done.")
 
-    print(f"[INFO] Total CSV frames: {len(items)}")
-    print(f"[INFO] PGN-only frames added to train: {pgn_added}")
-    print(f"[INFO] Train frames: {len(train_items)} | Val frames: {len(val_items)} | Test frames: {len(test_items)}")
-
-    # 4) Build tiles
-    build_dataset_from_splits(train_items, val_items, test_items, out_root=out_root)
-    print(f"[DONE] Dataset is ready in '{out_root}'")
+if __name__ == "__main__":
+    main()
