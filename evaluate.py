@@ -149,7 +149,7 @@ def run_test_and_ood(model_filename='chess_model.pth'):
     plt.ylabel('Ground Truth')
     plt.xlabel('Predicted (Last Column is OOD)')
     
-    report_path = './results/evaluation_confusion_matrix_final.png'
+    report_path = './results/evaluation_confusion_matrix.png'
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
     plt.savefig(report_path, dpi=300, bbox_inches='tight')
     plt.show()

@@ -103,10 +103,17 @@ Notes:
 - Class order comes from `torchvision.datasets.ImageFolder` (alphabetical by folder name). If you rename class folders, retrain.
 - Hyperparameters like `num_epochs`, `batch_size`, and learning rate are currently set inside `train.py`.
 
-Pretrained weights:
+#### Training results (report)
 
-- This repo may not include pretrained weights (model `.pth` files are often large).
-- If you have a local model file (for example `chess_model.pth` at the repo root), you can use it with `predict.py`.
+The latest training figures and summary text used for the report are stored in `for_report/`:
+
+- Learning curves:
+
+<img src="for_report/learning_curves.png" alt="Training learning curves" width="700" />
+
+- Confusion matrix:
+
+<img src="for_report/evaluation_confusion_matrix.png" alt="Evaluation confusion matrix" width="700" />
 
 Model file formats:
 
@@ -250,6 +257,22 @@ Output:
 <img src="assets/readme/debug_game2_frame_002472.jpg" alt="debug_compare=True (side-by-side) example" width="650" />
 
 The predicted board render marks rejected/uncertain squares with a red X.
+
+#### OOD handling (out-of-distribution squares)
+
+During inference, `predict.py` can mark a square as **OOD** (out-of-distribution) when it is likely not a valid/clean chessboard square crop.
+
+A square is marked as OOD (internal label id `13`) when either:
+
+- The crop fails basic visual validity checks (blur/low texture, not enough corner structure / edges), or
+- The classifier is not confident enough (low softmax confidence) or is too uncertain (high entropy).
+
+Effects:
+
+- In the **rendered board image**, OOD squares are drawn with a **red X**.
+- In the **printed FEN**, OOD squares are treated like **empty squares** (they contribute to the digit counts), so the FEN may be less reliable if many squares are OOD.
+
+You can tune this behavior by adjusting thresholds at the top of `predict.py` (for example `CONF_THRESHOLD` and `ENTROPY_THRESHOLD`).
 
 Tip: if many squares get a red X, try a cleaner/cropped top-down board image.
 
