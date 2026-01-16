@@ -79,7 +79,7 @@ Expected inputs:
 
 Notes:
 
-- If you have a zip like `raw_games/<game>_per_frame.zip`, extract it to `raw_games/<game>/...` first. The helper `unzip_folder()` exists in `preprocessing.py`, and there's also `unzip.py` you can use for safe extraction.
+- Make sure your `raw_games/<game>/...` folders are already extracted/unzipped (the preprocessing script expects folders on disk).
 - The script prints per-game progress (CSV frame counts and PGN diff progress).
 
 ### Training
@@ -103,11 +103,10 @@ Notes:
 - Class order comes from `torchvision.datasets.ImageFolder` (alphabetical by folder name). If you rename class folders, retrain.
 - Hyperparameters like `num_epochs`, `batch_size`, and learning rate are currently set inside `train.py`.
 
-Pretrained weights in this repo (optional):
+Pretrained weights:
 
-- `chess_model_with_pgn.pth`
-- `chess_model_without_pgn.pth`
-- `chess_model_koral.pth`
+- This repo may not include pretrained weights (model `.pth` files are often large).
+- If you have a local model file (for example `chess_model.pth` at the repo root), you can use it with `predict.py`.
 
 Model file formats:
 
@@ -220,15 +219,12 @@ So if your photo includes a lot of background or the board is rotated/skewed, gr
 
 #### Usage
 
-1. Edit the model path inside the script (`model_path` near the bottom).
-
-   - Default: `models/chess_model_with_pgn.pth`
+1. Put your input images into `image_predict_folder/` (the script processes all `*.jpg`/`*.png` files in that folder).
+2. Edit the model path inside the script (look for `load_model("chess_model.pth", device)`).
    - You can point it to any `.pth` file you trained/downloaded.
    - The loader supports both:
      - a plain PyTorch `state_dict`, and
      - a checkpoint dict containing keys like `model_state`, `epoch`, `optim_state`, `history`, `classes`.
-
-2. Edit the image path inside the script (`img_path` near the bottom).
 3. Run (recommended on Windows):
 
 ```powershell

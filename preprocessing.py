@@ -9,7 +9,6 @@ square crops and saves them under `final_dataset/{train,val,test}/<class>/`.
 """
 
 import os
-import zipfile
 import shutil
 import re
 import random
@@ -47,21 +46,9 @@ def discover_games(base_raw_dir="raw_games"):
     games = set()
     if not os.path.isdir(base_raw_dir): return []
     for name in os.listdir(base_raw_dir):
-        if name.endswith("_per_frame.zip"):
-            games.add(name[: -len("_per_frame.zip")])
-        elif os.path.isdir(os.path.join(base_raw_dir, name)):
+        if os.path.isdir(os.path.join(base_raw_dir, name)):
             games.add(name)
     return sorted(list(games))
-
-def unzip_folder(game_name, base_raw_dir="raw_games"):
-    zip_path = os.path.join(base_raw_dir, f"{game_name}_per_frame.zip")
-    dest_dir = os.path.join(base_raw_dir, game_name)
-    if os.path.exists(os.path.join(dest_dir, "images")): return
-    if not os.path.isfile(zip_path): return
-    print(f"Unzipping {game_name}...")
-    os.makedirs(dest_dir, exist_ok=True)
-    with zipfile.ZipFile(zip_path, "r") as zf:
-        zf.extractall(dest_dir)
 
 def pgn_to_fens(pgn_path):
     with open(pgn_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -287,7 +274,6 @@ def main():
     all_valid_items = []
     
     for game in games:
-        unzip_folder(game, base_raw_dir)
         csv_path = os.path.join(base_raw_dir, game, f"{game}.csv")
         
         if os.path.exists(csv_path):
