@@ -113,7 +113,7 @@ The latest training figures and summary text used for the report are stored in `
 
 - Confusion matrix:
 
-<img src="for_report/evaluation_confusion_matrix.png" alt="Evaluation confusion matrix" width="700" />
+<img src="for_report/evaluation_confusion_matrix.png" alt="Evaluation confusion matrix" width="600" />
 
 Model file formats:
 
