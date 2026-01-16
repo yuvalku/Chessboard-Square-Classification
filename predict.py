@@ -223,7 +223,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     _inference_model = load_model("chess_model.pth", device)
     
-    input_folder = "test_predict"
+    input_folder = "image_predict_folder"
     output_base_dir = "./results"
     os.makedirs(output_base_dir, exist_ok=True)
     
@@ -232,14 +232,27 @@ if __name__ == "__main__":
         img_path = os.path.join(input_folder, img_name)
         raw_img = np.array(Image.open(img_path).convert("RGB"))
         
-        # Predict and show side-by-side
-        board_tensor = predict_board(raw_img, debug_compare=True)
-        
-        # Output unique files for batch testing
-        new_debug_path = os.path.join(output_base_dir, f"debug_{img_name}")
-        if os.path.exists('./results/debug_comparison.png'):
-            if os.path.exists(new_debug_path): os.remove(new_debug_path)
-            os.rename('./results/debug_comparison.png', new_debug_path)
+        debug_compare = True
+
+        # Predict board matrix
+        board_tensor = predict_board(raw_img, debug_compare=debug_compare)
+
+        if debug_compare:
+            # Output unique files for batch testing
+            new_debug_path = os.path.join(output_base_dir, f"debug_{img_name}")
+            if os.path.exists('./results/debug_comparison.png'):
+                if os.path.exists(new_debug_path):
+                    os.remove(new_debug_path)
+                os.rename('./results/debug_comparison.png', new_debug_path)
+        else:
+            # Save only the predicted board visualization (no side-by-side input comparison)
+            base, _ = os.path.splitext(img_name)
+            pred_path = os.path.join(output_base_dir, f"pred_{base}.png")
+            visual_board_from_matrix(board_tensor, out_path=pred_path)
+
+            # Avoid accidentally reusing an old comparison image from previous runs
+            if os.path.exists('./results/debug_comparison.png'):
+                os.remove('./results/debug_comparison.png')
             
         print(f"Processed: {img_name}")
         print(f"FEN: {matrix_to_fen(board_tensor)}\n")

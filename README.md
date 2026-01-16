@@ -18,25 +18,15 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 3) (Optional) PyTorch GPU install
-
-By default, `pip install -r requirements.txt` will install PyTorch from PyPI (often CPU-only).
-If you want GPU acceleration, install the CUDA-enabled build for your CUDA version using the official selector:
-
-- https://pytorch.org/get-started/locally/
-
-Then re-run `pip install -r requirements.txt` if needed.
-
-### 4) Quick sanity check
+### 3) Quick sanity check
 
 ```powershell
-python -c "import torch; import torchvision; import cv2; import numpy; import pandas; import PIL; import sklearn; import matplotlib; import seaborn; import splitfolders; import chess; print('OK')"
+python -c "import torch; import torchvision; import cv2; import numpy; import pandas; import PIL; import sklearn; import matplotlib; import seaborn; import chess; print('OK')"
 ```
 
 ## Project scripts
 
-On Windows/PowerShell, prefer running scripts as `python <script>.py` (for example `python preprocessing.py`).
-Running `./preprocessing.py` or `./preprocessing` may do nothing if `.py` file associations are not configured.
+On Windows/PowerShell, run the scripts as `python ./<script>.py` (for example `python ./preprocessing.py`).
 
 ### Data preprocessing / dataset creation
 
@@ -62,7 +52,7 @@ raw_games/
 	...
 ```
 
-`preprocessing.py`:
+`python ./preprocessing.py`:
 
 - Scans `raw_games/` for games in two supported layouts:
   - CSV-labeled games: `<game>.csv` + `tagged_images/`
@@ -247,8 +237,18 @@ python .\predict.py
 
 Output:
 
-- Printed predicted board matrix and FEN string.
-- `results/final_board_state.png` (rendered board; squares rejected as OOD are marked with a red X).
+- Printed predicted board matrix and FEN string for each processed image.
+
+#### `debug_compare` (side-by-side debug output)
+
+`predict.py` supports a `debug_compare` flag when calling `predict_board(...)`.
+
+- If `debug_compare=True`: saves a **side-by-side** image (input on the left, predicted board render on the right) to `results/`.
+  - Example: `results/debug_game2_frame_002472.jpg`
+- If `debug_compare=False`: saves **only the predicted board render** (no input image) to `results/`.
+  - Example: `results/pred_game2_frame_002472.png`
+
+The predicted board render marks rejected/uncertain squares with a red X.
 
 Tip: if many squares get a red X, try a cleaner/cropped top-down board image.
 

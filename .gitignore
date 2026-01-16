@@ -13,26 +13,12 @@ __pycache__/
 *.png
 *.pgn
 
-# model weights
-*.pth
-
-*.pgn
-
-
-# model weights
-*.pth
-
-
-# model weights
-*.pth
-
-
 # large artifacts
 *.zip
 raw_games/
 
 
 # datasets / large zips
-final_dataset.zip
 final_dataset/
+chessboard-final-colab
 
