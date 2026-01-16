@@ -1,3 +1,13 @@
+"""Build the `final_dataset/` image classification dataset.
+
+This script supports two labeling sources:
+- CSV-labeled games: `raw_games/<game>/<game>.csv` + `tagged_images/`
+- PGN-only games: `raw_games/<game>/<game>.pgn` + `images/`
+
+For each selected frame, it slices the board image into an 8x8 grid of overlapping
+square crops and saves them under `final_dataset/{train,val,test}/<class>/`.
+"""
+
 import os
 import zipfile
 import shutil
@@ -11,20 +21,27 @@ import scipy.signal
 import scipy.ndimage
 import cv2
 
-# --- CONFIGURATION ---
-MOTION_DOWNSAMPLE = 16          
-MIN_MOVE_DURATION_FRAMES = 10   
-CENTER_CHECK_RADIUS = 0.20      
+# Motion/selection configuration
+MOTION_DOWNSAMPLE = 32           # Higher values ignore small motion
+MIN_MOVE_DURATION_FRAMES = 5     # Minimum length for a "stable" segment
+CENTER_CHECK_RADIUS = 0.20       # Center ROI size for occupancy validation
 
-# --- MANUAL OVERRIDES (The "Escape Hatch") ---
-# If detection fails, force the correct perspective here.
-# True = Black at Bottom (Flipped). False = White at Bottom (Standard).
+# Manual orientation overrides.
+# True = black at bottom (flipped), False = white at bottom (standard).
 MANUAL_ORIENTATION_MAP = {
-    "game12": False, # Example: Set to True if game12 is actually flipped
-    "game13": True,  # Example: Force game13 to be flipped
+    "game2": False,
+    "game5": False,
+    "game6": False,
+    "game7": False,
+    "game8": False,
+    "game9": False,
+    "game10": False,
+    "game11": False,
+    "game12": False,
+    "game13": True,
 }
 
-# --- HELPER FUNCTIONS ---
+# --- Helpers ---
 
 def discover_games(base_raw_dir="raw_games"):
     games = set()
@@ -107,50 +124,20 @@ def parse_fen_to_matrix(fen, flip_board=False):
         
     return np_matrix
 
-# --- IMPROVED ORIENTATION DETECTOR ---
+# --- Orientation ---
 
 def detect_board_orientation(image_path, game_name):
-    # 1. Check Manual Override First
+    """Return whether the board should be treated as flipped.
+
+    Currently this uses `MANUAL_ORIENTATION_MAP` when available. If a game is not in
+    the map, it falls back to standard orientation.
+    """
     if game_name in MANUAL_ORIENTATION_MAP:
         forced_val = MANUAL_ORIENTATION_MAP[game_name]
         print(f"   [Orientation] {game_name}: Manual Override -> {'FLIPPED' if forced_val else 'STANDARD'}")
         return forced_val
 
-    # 2. Heuristic Detection (Row Comparison)
-    try:
-        with Image.open(image_path) as img:
-            gray = img.convert("L")
-            w, h = gray.size
-            stride_h = h / 8.0
-            
-            # Target Row 1 (Black Pawns in Standard) and Row 6 (White Pawns in Standard)
-            # We ignore Row 0/7 (Pieces) because they vary too much in shape. Pawns are uniform.
-            
-            # Top Pawn Row (Row 1)
-            y1_top = int(1 * stride_h)
-            y2_top = int(2 * stride_h)
-            top_row_crop = gray.crop((0, y1_top, w, y2_top))
-            
-            # Bottom Pawn Row (Row 6)
-            y1_bot = int(6 * stride_h)
-            y2_bot = int(7 * stride_h)
-            bottom_row_crop = gray.crop((0, y1_bot, w, y2_bot))
-            
-            top_mean = ImageStat.Stat(top_row_crop).mean[0]
-            bottom_mean = ImageStat.Stat(bottom_row_crop).mean[0]
-            
-            print(f"   [Orientation Debug] TopRow Brightness: {top_mean:.1f}, BottomRow Brightness: {bottom_mean:.1f}")
-            
-            # Logic:
-            # Standard: Top=Black(Dark), Bottom=White(Light) -> Bottom > Top
-            # Flipped: Top=White(Light), Bottom=Black(Dark) -> Top > Bottom
-            
-            if top_mean > (bottom_mean + 10): # Added buffer to prevent noise flipping
-                return True # Flipped (White is at top)
-            
-            return False # Standard (White is at bottom)
-    except:
-        return False
+    return False
 
 # --- PROCESSING LOGIC ---
 
@@ -254,7 +241,9 @@ def validate_center_occupancy(pil_crop, label):
 
 def slice_image_with_overlap(game_name, image_path, output_root, board_matrix, overlap_percent=0.7, final_size=(224, 224)):
     try:
-        with Image.open(image_path) as img:
+        with Image.open(image_path).convert("RGB") as img:
+            # Normalize input size so training and inference use the same grid geometry.
+            img = img.resize((800, 800))
             img_width, img_height = img.size
             stride_w = img_width / 8.0
             stride_h = img_height / 8.0
@@ -275,17 +264,21 @@ def slice_image_with_overlap(game_name, image_path, output_root, board_matrix, o
                     tile = img.crop((left, upper, right, lower))
                     label = board_matrix[r, c]
                     
+                    # Skip tiles that look inconsistent with the label (helps reduce noisy labels).
                     if validate_center_occupancy(tile, label):
                         tile = tile.resize(final_size, Image.Resampling.LANCZOS)
                         class_dir = os.path.join(output_root, label)
                         os.makedirs(class_dir, exist_ok=True)
-                        tile.save(os.path.join(class_dir, f"{game_name}_{name_only}_r{r}_c{c}.jpg"), quality=90)
+                        
+                        # Save via PIL to preserve RGB channel order.
+                        save_path = os.path.join(class_dir, f"{game_name}_{name_only}_r{r}_c{c}.jpg")
+                        tile.save(save_path, "JPEG", quality=95)
+                        
     except Exception as e:
-        print(f"Error {image_path}: {e}")
-
-# --- MAIN ---
+        print(f"Error processing {image_path}: {e}")
 
 def main():
+    """Entry point: build `final_dataset/` from `raw_games/`."""
     base_raw_dir = "raw_games"
     out_root = "final_dataset"
     if os.path.exists(out_root): shutil.rmtree(out_root)

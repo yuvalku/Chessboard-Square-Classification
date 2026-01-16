@@ -1,0 +1,26 @@
+without PGN:
+Epoch 1/12 | train Loss: 0.4743 Acc: 0.9166
+Epoch 1/12 | val Loss: 0.0856 Acc: 0.9810
+Epoch 2/12 | train Loss: 0.0883 Acc: 0.9840
+Epoch 2/12 | val Loss: 0.0647 Acc: 0.9819
+Epoch 3/12 | train Loss: 0.0857 Acc: 0.9840
+Epoch 3/12 | val Loss: 0.1971 Acc: 0.9577
+Epoch 4/12 | train Loss: 0.0542 Acc: 0.9869
+Epoch 4/12 | val Loss: 0.0558 Acc: 0.9856
+Epoch 5/12 | train Loss: 0.0211 Acc: 0.9922
+Epoch 5/12 | val Loss: 0.0329 Acc: 0.9914
+Epoch 6/12 | train Loss: 0.0910 Acc: 0.9842
+Epoch 6/12 | val Loss: 0.0270 Acc: 0.9933
+Epoch 7/12 | train Loss: 0.0274 Acc: 0.9905
+Epoch 7/12 | val Loss: 0.0459 Acc: 0.9884
+Epoch 8/12 | train Loss: 0.0488 Acc: 0.9893
+Epoch 8/12 | val Loss: 0.0316 Acc: 0.9920
+Epoch 9/12 | train Loss: 0.0261 Acc: 0.9905
+Epoch 9/12 | val Loss: 0.0251 Acc: 0.9942
+Epoch 10/12 | train Loss: 0.0234 Acc: 0.9935
+Epoch 10/12 | val Loss: 0.0326 Acc: 0.9911
+Epoch 11/12 | train Loss: 0.0359 Acc: 0.9883
+Epoch 11/12 | val Loss: 0.0238 Acc: 0.9920
+Epoch 12/12 | train Loss: 0.0427 Acc: 0.9902
+Epoch 12/12 | val Loss: 0.0282 Acc: 0.9933
+

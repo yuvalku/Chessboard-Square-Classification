@@ -124,59 +124,89 @@ Model file formats:
 
 #### Training on Google Colab (GPU) using `train_colab.py`
 
-If you want faster training (GPU), use `train_colab.py`. It is designed to:
+If you want faster training (GPU), use `train_colab.py`. It is designed to run in Colab and save outputs to Google Drive.
 
-- Run on Colab with a GPU runtime
-- Save outputs persistently to Google Drive (so you don't lose them when the session ends)
+This repo’s recommended Colab workflow is **Drive-first**:
 
-1. Open a Colab notebook and enable GPU:
+1. Prepare a folder locally: `chessboard-project-colab/`
+
+Create a folder named exactly:
+
+```
+chessboard-project-colab/
+```
+
+Inside it, put:
+
+- `train_colab.py` (copy it from this repo)
+- `final_dataset/` (your prepared dataset)
+
+So the structure looks like:
+
+```
+chessboard-project-colab/
+  train_colab.py
+  final_dataset/
+    train/
+      <class_name>/
+        *.png
+    val/
+      <class_name>/
+        *.png
+    test/            # optional for training
+      <class_name>/
+        *.png
+```
+
+`<class_name>` must be the same 13 folders used by this project (12 pieces + `empty`), for example:
+
+```
+black_bishop, black_king, black_knight, black_pawn, black_queen, black_rook,
+white_bishop, white_king, white_knight, white_pawn, white_queen, white_rook,
+empty
+```
+
+2. Create `final_dataset/`
+
+You have two options:
+
+- Recommended: generate it locally by running:
+
+```powershell
+python preprocessing.py
+```
+
+This creates `final_dataset/train`, `final_dataset/val`, `final_dataset/test` automatically.
+
+- Manual: create the folder structure shown above and place the square images yourself.
+
+3. Zip and upload to Google Drive
+
+- Zip the whole `chessboard-project-colab/` folder (so the zip contains the folder, not just its contents).
+- Upload the zip to your Google Drive (for example to `MyDrive/`).
+
+4. Train in Colab using `train_colab.ipynb`
+
+You will use a Colab notebook named `train_colab.ipynb` (you said you’ll add it later). The notebook should:
+
+- Mount Drive
+- Unzip `chessboard-project-colab.zip` into the Colab workspace
+- Install dependencies
+- Run `python train_colab.py`
+
+Make sure GPU is enabled:
 
 - **Runtime → Change runtime type → Hardware accelerator: GPU**
 
-2. Get the project code into Colab (one option):
-
-```bash
-git clone https://github.com/yuvalku/Chessboard-Square-Classification.git
-cd Chessboard-Square-Classification
-git checkout yuval_new
-```
-
-3. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-4. Make sure `final_dataset/` exists in the repo folder on Colab.
-
-`train_colab.py` expects these folders to exist **next to the script**:
-
-- `final_dataset/train/...`
-- `final_dataset/val/...`
-
-If you created `final_dataset/` locally, upload/copy it into the Colab workspace repo folder.
-
-5. Run training:
-
-```bash
-python train_colab.py
-```
-
 Outputs:
 
-- If Drive is available, files are saved under: `/content/drive/MyDrive/chessboard_models/`
+- Models and curves are saved to Drive (default): `/content/drive/MyDrive/chessboard_models/`
 - Filenames are timestamped, e.g. `chess_model_YYYYMMDD_HHMMSS.pth`, `checkpoint_last_YYYYMMDD_HHMMSS.pth`, `learning_curves_YYYYMMDD_HHMMSS.png`
 
 Notes:
 
-- `checkpoint_last_*.pth` is a checkpoint dict (contains `epoch`, `model_state`, `optim_state`, `history`, `classes`).
-- `chess_model_*.pth` is a plain `state_dict`.
-
-Run:
-
-```powershell
-python train.py
-```
+- `checkpoint_last_*.pth` is a checkpoint dict (contains keys like `epoch`, `model_state`, `optim_state`, `history`, `classes`).
+- `chess_model_*.pth` is a plain PyTorch `state_dict`.
 
 ### Predict FEN from an image
 

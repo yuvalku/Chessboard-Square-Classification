@@ -61,7 +61,7 @@ def train_model(resume=False):
     log_path = os.path.join(save_dir, f"train_log_{run_id}.txt")
 
     # Optional: also keep "latest" copies for convenience
-    SAVE_LATEST = False
+    SAVE_LATEST = True
     latest_model_path = os.path.join(save_dir, "chess_model_latest.pth")
     latest_ckpt_path = os.path.join(save_dir, "checkpoint_latest.pth")
     latest_curves_path = os.path.join(save_dir, "learning_curves_latest.png")
@@ -157,7 +157,7 @@ def train_model(resume=False):
         optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
         history = {"train_loss": [], "val_loss": [], "train_acc": [], "val_acc": []}
-        num_epochs = 12
+        num_epochs = 20
         start_epoch = 0
 
         # Resume: by default resume from "latest" checkpoint if it exists
