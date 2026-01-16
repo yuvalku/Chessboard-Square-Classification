@@ -26,7 +26,7 @@ python -c "import torch; import torchvision; import cv2; import numpy; import pa
 
 ## Project scripts
 
-On Windows/PowerShell, run the scripts as `python ./<script>.py` (for example `python ./preprocessing.py`).
+On Windows/PowerShell, run the scripts as `python .\<script>.py` (for example `python .\preprocessing.py`).
 
 ### Data preprocessing / dataset creation
 
@@ -52,7 +52,7 @@ raw_games/
 	...
 ```
 
-`python ./preprocessing.py`:
+`python .\preprocessing.py`:
 
 - Scans `raw_games/` for games in two supported layouts:
   - CSV-labeled games: `<game>.csv` + `tagged_images/`
@@ -63,7 +63,7 @@ raw_games/
 Run:
 
 ```powershell
-python preprocessing.py
+python .\preprocessing.py
 ```
 
 Expected inputs:
@@ -84,7 +84,7 @@ Notes:
 
 ### Training
 
-Prerequisite: run `python preprocessing.py` first so you have:
+Prerequisite: run `python .\preprocessing.py` first so you have:
 
 - `final_dataset/train/<class>/*.png`
 - `final_dataset/val/<class>/*.png`
@@ -167,7 +167,7 @@ You have two options:
 - Recommended: generate it locally by running:
 
 ```powershell
-python preprocessing.py
+python .\preprocessing.py
 ```
 
 This creates `final_dataset/train`, `final_dataset/val`, `final_dataset/test` automatically.
