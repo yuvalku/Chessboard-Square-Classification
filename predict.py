@@ -236,6 +236,9 @@ if __name__ == "__main__":
 
         # Predict board matrix
         board_tensor = predict_board(raw_img, debug_compare=debug_compare)
+        print(f"Board Matrix for {img_name}:")
+        print(board_tensor) 
+        print(f"Dtype: {board_tensor.dtype}, Shape: {board_tensor.shape}, Device: {board_tensor.device}")
 
         if debug_compare:
             # Output unique files for batch testing
@@ -254,5 +257,4 @@ if __name__ == "__main__":
             if os.path.exists('./results/debug_comparison.png'):
                 os.remove('./results/debug_comparison.png')
             
-        print(f"Processed: {img_name}")
         print(f"FEN: {matrix_to_fen(board_tensor)}\n")
