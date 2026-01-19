@@ -19,6 +19,9 @@ __pycache__/
 # Allow report figures
 !for_report/**/*.png
 
+# Allow static folder images
+!static/**
+
 # large artifacts
 *.zip
 raw_games/
