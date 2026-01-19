@@ -28,6 +28,45 @@
     .text-block .content { text-align: left; }
     .text-block p { margin-bottom: 0.9rem; }
     .text-block ol, .text-block ul { margin-left: 1.2rem; }
+
+    /* OOD figure layout */
+    .ood-grid{
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        max-width: 980px;
+        margin: 0 auto;
+    }
+
+    .ood-card{
+      border: 1px solid rgba(10,10,10,0.08);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .ood-card img{
+      display:block;
+      width:100%;
+      height:auto;
+    }
+    .ood-card .ood-cap{
+      padding: 10px 12px;
+      color: #666;
+      font-size: 0.92rem;
+      border-top: 1px solid rgba(10,10,10,0.08);
+      text-align: center;
+    }
+    .hero-line{
+    font-family: 'Noto Sans', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+    line-height: 1.6;
+    color: #363636;
+    }
+
+    @media (max-width: 768px){
+      .ood-grid{ grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 
@@ -73,7 +112,7 @@
     <div class="hero-body">
       <div class="container is-max-desktop has-text-centered">
         <img src="static/board5.jpg" style="max-height: 400px; border-radius: 10px;" alt="Input chessboard">
-        <h2 class="subtitle" style="margin-top: 15px;">
+        <h2 class="hero-line" style="margin-top: 15px;">
           Translating real-world chessboard images into digital FEN notation using Deep Learning.
         </h2>
       </div>
@@ -121,6 +160,54 @@
         <img src="static/pipeline.png" style="width: 90%; max-width: 980px;" alt="Pipeline">
         <p class="image-caption">Figure 1: The full processing pipeline from raw input to FEN string.</p>
       </div>
+    </div>
+  </section>
+
+    <section class="section">
+        <div class="container is-max-desktop">
+            <h2 class="title is-3 has-text-centered">Out-of-Distribution (OOD) Handling</h2>
+
+            <div class="text-block">
+            <div class="content">
+                <p>
+                In our project, OOD handling is implemented during inference in <strong>predict.py</strong>.
+                Each square is checked before we trust the classifier output. If a square looks invalid or the model is not confident enough,
+                we mark it as <strong>OOD</strong> (an internal OOD class id) to avoid confident but wrong piece predictions.
+                </p>
+
+                <ul class="center-list">
+                <li><strong>Visual validity checks:</strong> The square crop is rejected if it fails basic quality or structure tests (for example heavy blur or not enough visual structure).</li>
+                <li><strong>Uncertainty thresholds:</strong> A square is flagged as OOD when the prediction confidence is too low (softmax confidence) or when uncertainty is too high (entropy).</li>
+                <li><strong>Clear visualization:</strong> OOD squares are marked explicitly in the rendered board (red X) so it is easy to see where the pipeline is uncertain.</li>
+                <li><strong>FEN behavior:</strong> In the printed FEN, OOD squares are treated like empty squares, so many OOD flags mean the FEN is less reliable.</li>
+                <li><strong>Tunable thresholds:</strong> The repo exposes thresholds (for example <code>CONF_THRESHOLD</code> and <code>ENTROPY_THRESHOLD</code>) so you can trade off between coverage and reliability.</li>
+                </ul>
+                <p class="muted" style="margin-bottom: 10px;">
+                Examples below show challenging inputs where OOD flags prevent forcing incorrect labels.
+                </p>
+            </div>
+            </div>
+        </div>
+    </section>
+
+      <div class="ood-grid">
+        <div class="ood-card">
+          <img src="static/board1.jpeg" alt="OOD example 1">
+          <div class="ood-cap">
+            <strong>Example 1:</strong> Occlusion and uneven illumination. Some squares are partially visible, so low-confidence squares are flagged instead of forcing labels.
+          </div>
+        </div>
+        <div class="ood-card">
+          <img src="static/board2.jpeg" alt="OOD example 2">
+          <div class="ood-cap">
+            <strong>Example 2:</strong> Strong perspective / blur. The pipeline relies on preprocessing retries and board-level checks to avoid inconsistent reconstructions.
+          </div>
+        </div>
+      </div>
+
+      <p class="image-caption" style="margin-top: 10px;">
+        Figure 2: OOD examples used to demonstrate robustness strategies.
+      </p>
     </div>
   </section>
 
