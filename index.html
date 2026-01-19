@@ -1,156 +1,174 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Chessboard Square Classification</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chessboard Square Classification</title>
 
-    <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <style>
-        body { font-family: 'Noto Sans', sans-serif; }
-        .title { color: #363636; }
-        .publication-title { font-family: 'Google Sans', sans-serif; font-weight: bold; font-size: 2.5rem; }
-        .publication-authors { font-size: 1.3rem; margin-top: 20px; }
-        .abstract-text { font-size: 1.1rem; line-height: 1.6; }
-        .hero-body { padding: 3rem 1.5rem; }
-        .section-title { font-size: 1.8rem; font-weight: bold; margin-bottom: 1rem; color: #4a4a4a; }
-        .image-caption { font-size: 0.9rem; color: #666; font-style: italic; margin-top: 5px; text-align: center;}
-        .box { box-shadow: 0 0.5em 1em -0.125em rgba(10, 10, 10, 0.1), 0 0px 0 1px rgba(10, 10, 10, 0.02); }
-    </style>
-    </head>
-    <body>
+  <style>
+    body { font-family: 'Noto Sans', sans-serif; }
+    .title { color: #363636; }
+    .publication-title { font-family: 'Google Sans', sans-serif; font-weight: bold; font-size: 2.5rem; }
+    .publication-authors { font-size: 1.3rem; margin-top: 20px; }
+    .abstract-text { font-size: 1.1rem; line-height: 1.6; }
+    .hero-body { padding: 3rem 1.5rem; }
+    .image-caption { font-size: 0.9rem; color: #666; font-style: italic; margin-top: 10px; text-align: center; }
+    .box { box-shadow: 0 0.5em 1em -0.125em rgba(10, 10, 10, 0.1), 0 0px 0 1px rgba(10, 10, 10, 0.02); }
 
-    <section class="hero">
-        <div class="hero-body">
-        <div class="container is-max-desktop has-text-centered">
-            <h1 class="title publication-title">Chessboard Square Classification &<br>Board Reconstruction</h1>
-            
-            <div class="is-size-5 publication-authors">
-            <span class="author-block">Yuval Kutai</span>, 
-            <span class="author-block">Rotem Harduf</span>, 
-            <span class="author-block">Koral Shilon</span>
-            </div>
+    /* Alignment system */
+    .text-block{
+      max-width: 860px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    .text-block .content { text-align: left; }
+    .text-block p { margin-bottom: 0.9rem; }
+    .text-block ol, .text-block ul { margin-left: 1.2rem; }
+  </style>
+</head>
 
-            <div class="is-size-5 publication-authors">
-            <span class="author-block">B.Sc. Final Project, Computer Science Department</span>
-            </div>
+<body>
 
-            <div class="column has-text-centered">
-            <div class="publication-links">
-                <span class="link-block">
-                <a href="https://github.com/yuvalku/Chessboard-Square-Classification" class="external-link button is-normal is-rounded is-dark">
-                    <span class="icon"><i class="fab fa-github"></i></span>
-                    <span>Code</span>
-                </a>
-                </span>
-                <span class="link-block">
-                <a href="./Chess-Board Squares Classification.pdf" class="external-link button is-normal is-rounded is-dark">
-                    <span class="icon"><i class="fas fa-file-pdf"></i></span>
-                    <span>Presentation</span>
-                </a>
-                </span>
-            </div>
-            </div>
-        </div>
-        </div>
-    </section>
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop has-text-centered">
+        <h1 class="title publication-title">Chessboard Square Classification &<br>Board Reconstruction</h1>
 
-    <section class="hero is-light is-small">
-        <div class="hero-body">
-        <div class="container is-max-desktop has-text-centered">
-            <img src="static/board5.jpg" style="max-height: 400px; border-radius: 10px;">
-            <h2 class="subtitle has-text-centered" style="margin-top: 15px;">
-            Translating real-world chessboard images into digital FEN notation using Deep Learning.
-            </h2>
-        </div>
-        </div>
-    </section>
-
-    <section class="section">
-        <div class="container is-max-desktop">
-        <div class="columns is-centered has-text-centered">
-            <div class="column is-four-fifths">
-            <h2 class="title is-3">Abstract</h2>
-            <div class="content has-text-justified abstract-text">
-                <p>
-                Digitalizing a physical chess game is a complex computer vision challenge. 
-                While synthetic datasets are easy to solve, real-world images introduce <strong>shadows, occlusions, and perspective distortions</strong>.
-                </p>
-                <p>
-                This project presents an end-to-end pipeline that detects the board, slices it into squares, 
-                and classifies each piece using a fine-tuned <strong>ResNet18</strong> model. 
-                We bridge the "Sim2Real" gap using robust data augmentation and geometric heuristics, 
-                achieving <strong>98.4% accuracy</strong> on real-world test data.
-                </p>
-            </div>
-            </div>
-        </div>
-        </div>
-    </section>
-
-    <section class="section">
-        <div class="container is-max-desktop">
-        <h2 class="title is-3 has-text-centered">Method & Pipeline</h2>
-        <div class="content has-text-justified">
-            <p>
-            Our approach processes the raw image in three main stages:
-            <ol>
-                <li><strong>Preprocessing:</strong> Detecting board corners and applying Perspective Transform to flatten the board.</li>
-                <li><strong>Slicing:</strong> Dividing the aligned board into 64 individual square images.</li>
-                <li><strong>Classification:</strong> Each square is fed into a CNN (ResNet18) to predict one of 13 classes (Pieces or Empty).</li>
-            </ol>
-            </p>
-        </div>
-        <div class="has-text-centered">
-            <img src="static/pipeline.png" width="90%">
-            <p class="image-caption">Figure 1: The full processing pipeline from raw input to FEN string.</p>
-        </div>
-        </div>
-    </section>
-
-    <section class="section">
-        <div class="container is-max-desktop">
-        <h2 class="title is-3 has-text-centered">Results</h2>
-        
-        <div class="columns is-centered">
-            <div class="column is-full-width has-text-centered">
-            <p class="content">
-                We achieved a test accuracy of <strong>98.4%</strong>. The confusion matrix below demonstrates near-perfect separation between empty and occupied squares.
-            </p>
-            <img src="for_report/evaluation_confusion_matrix.png" width="80%" style="margin-bottom: 20px;">
-            </div>
+        <div class="is-size-5 publication-authors">
+          <span class="author-block">Yuval Kutai</span>,
+          <span class="author-block">Rotem Harduf</span>,
+          <span class="author-block">Koral Shilon</span>
         </div>
 
+        <div class="is-size-5 publication-authors">
+          <span class="author-block">B.Sc. Final Project, Computer Science Department</span>
+        </div>
+
+        <div class="column has-text-centered">
+          <div class="publication-links">
+            <span class="link-block">
+              <a href="https://github.com/yuvalku/Chessboard-Square-Classification" class="external-link button is-normal is-rounded is-dark">
+                <span class="icon"><i class="fab fa-github"></i></span>
+                <span>Code</span>
+              </a>
+            </span>
+            <span class="link-block">
+              <a href="./Chess-Board Squares Classification.pdf" class="external-link button is-normal is-rounded is-dark">
+                <span class="icon"><i class="fas fa-file-pdf"></i></span>
+                <span>Presentation</span>
+              </a>
+            </span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="hero is-light is-small">
+    <div class="hero-body">
+      <div class="container is-max-desktop has-text-centered">
+        <img src="static/board5.jpg" style="max-height: 400px; border-radius: 10px;" alt="Input chessboard">
+        <h2 class="subtitle" style="margin-top: 15px;">
+          Translating real-world chessboard images into digital FEN notation using Deep Learning.
+        </h2>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 has-text-centered">Abstract</h2>
+
+      <div class="text-block">
+        <div class="content abstract-text">
+          <p>
+            Digitalizing a physical chess game is a complex computer vision challenge.
+            While synthetic datasets are easy to solve, real-world images introduce <strong>shadows, occlusions, and perspective distortions</strong>.
+          </p>
+          <p>
+            This project presents an end-to-end pipeline that detects the board, slices it into squares,
+            and classifies each piece using a fine-tuned <strong>ResNet18</strong> model.
+            We bridge the "Sim2Real" gap using robust data augmentation and geometric heuristics,
+            achieving <strong>98.4% accuracy</strong> on real-world test data.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 has-text-centered">Method & Pipeline</h2>
+
+      <div class="text-block">
+        <div class="content">
+          <p>Our approach processes the raw image in three main stages:</p>
+          <ol>
+            <li><strong>Preprocessing:</strong> Detecting board corners and applying Perspective Transform to flatten the board.</li>
+            <li><strong>Slicing:</strong> Dividing the aligned board into 64 individual square images.</li>
+            <li><strong>Classification:</strong> Each square is fed into a CNN (ResNet18) to predict one of 13 classes (Pieces or Empty).</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="has-text-centered" style="margin-top: 18px;">
+        <img src="static/pipeline.png" style="width: 90%; max-width: 980px;" alt="Pipeline">
+        <p class="image-caption">Figure 1: The full processing pipeline from raw input to FEN string.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container is-max-desktop">
+      <h2 class="title is-3 has-text-centered">Results</h2>
+
+      <div class="text-block">
+        <div class="content">
+          <p>
+            We achieved a test accuracy of <strong>98.4%</strong>. The confusion matrix below demonstrates near-perfect separation between empty and occupied squares.
+          </p>
+        </div>
+      </div>
+
+      <div class="has-text-centered" style="margin-top: 18px;">
+        <img src="for_report/evaluation_confusion_matrix.png" style="width: 80%; max-width: 980px; margin-bottom: 20px;" alt="Confusion matrix">
+      </div>
+
+      <div class="text-block">
         <div class="box">
-            <h4 class="title is-4">Key Insights</h4>
-            <div class="content">
+          <h4 class="title is-4">Key Insights</h4>
+          <div class="content">
             <ul>
-                <li><strong>Preprocessing is Key:</strong> Model accuracy is strictly bound by the board cropping quality. A minor grid drift leads to immediate misclassification.</li>
-                <li><strong>Geometric Ambiguity:</strong> The main source of error is the visual similarity between the <strong>White Bishop</strong> and <strong>White Pawn</strong> in top-down views.</li>
-                <li><strong>Detail Loss:</strong> Resizing crops to 224x224 can erase fine features like the King's cross.</li>
+              <li><strong>Preprocessing is Key:</strong> Model accuracy is strictly bound by the board cropping quality. A minor grid drift leads to immediate misclassification.</li>
+              <li><strong>Geometric Ambiguity:</strong> The main source of error is the visual similarity between the <strong>White Bishop</strong> and <strong>White Pawn</strong> in top-down views.</li>
+              <li><strong>Detail Loss:</strong> Resizing crops to 224x224 can erase fine features like the King's cross.</li>
             </ul>
-            </div>
+          </div>
         </div>
-        </div>
-    </section>
+      </div>
 
-    <footer class="footer">
-        <div class="container">
-        <div class="content has-text-centered">
-            <p>
-            Project page for <strong>Chessboard Square Classification</strong>.
-            <br>
-            <a href="https://github.com/yuvalku/Chessboard-Square-Classification" class="icon-link">
-                <i class="fab fa-github"></i> View on GitHub
-            </a>
-            </p>
-        </div>
-        </div>
-    </footer>
+    </div>
+  </section>
 
-    </body>
+  <footer class="footer">
+    <div class="container">
+      <div class="content has-text-centered">
+        <p>
+          Project page for <strong>Chessboard Square Classification</strong>.
+          <br>
+          <a href="https://github.com/yuvalku/Chessboard-Square-Classification" class="icon-link">
+            <i class="fab fa-github"></i> View on GitHub
+          </a>
+        </p>
+      </div>
+    </div>
+  </footer>
+
+</body>
 </html>
