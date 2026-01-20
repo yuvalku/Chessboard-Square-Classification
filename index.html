@@ -191,7 +191,7 @@
             <li><strong>Uncertainty thresholds:</strong> A square is flagged as OOD when the prediction confidence is too low (softmax confidence) or when uncertainty is too high (entropy).</li>
             <li><strong>Clear visualization:</strong> OOD squares are marked explicitly in the rendered board (red X) so it is easy to see where the pipeline is uncertain.</li>
             <li><strong>FEN behavior:</strong> In the printed FEN, OOD squares are treated like empty squares, so many OOD flags mean the FEN is less reliable.</li>
-            <li><strong>Tunable thresholds:</strong> The repo exposes thresholds (for example <code>CONF_THRESHOLD</code> and <code>ENTROPY_THRESHOLD</code>) so you can trade off between coverage and reliability.</li>
+            <li><strong>Tunable thresholds:</strong> Thresholds are being used (<code>CONF_THRESHOLD</code> and <code>ENTROPY_THRESHOLD</code>) to trade off between coverage and reliability.</li>
           </ul>
 
           <p class="muted" style="margin-bottom: 10px;">
