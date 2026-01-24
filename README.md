@@ -203,7 +203,7 @@ Notes:
 
 #### Training results (report)
 
-The latest training figures and summary text used for the report are stored in `assets/for_report/`:
+The latest training figures and summary text used for the report are stored in `assets/for_report/` and are committed to this repository (uploaded to GitHub).
 
 - Learning curves:
 

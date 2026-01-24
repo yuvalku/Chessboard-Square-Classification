@@ -16,11 +16,11 @@ __pycache__/
 # Allow documentation images used by README
 !assets/readme/**
 
-# Allow report figures
-!for_report/**/*.png
+# Allow report artifacts (figures + logs) used by README/site
+!assets/for_report/**
 
-# Allow static folder images
-!static/**
+# Allow website static assets
+!assets/static/**
 
 # large artifacts
 *.zip
