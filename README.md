@@ -1,24 +1,35 @@
 # Chessboard Square Classification
 
-This project trains a CNN (ResNet18) to classify each chessboard square into one of 13 classes (12 pieces + empty), and can predict a FEN string from a board image.
+This project trains a CNN (ResNet18) to classify each chessboard square into one of 13 classes (12 pieces + empty) and predict a FEN string from a board image.
+
+Project website: https://yuvalku.github.io/Chessboard-Square-Classification/
 
 ## Setup (Conda, Windows)
 
-### 1) Create and activate a conda environment
+### 1) Clone the repository
+
+If you already have the project folder locally, you can skip this step.
+
+```powershell
+git clone https://github.com/yuvalku/Chessboard-Square-Classification.git
+cd Chessboard-Square-Classification
+```
+
+### 2) Create and activate a conda environment
 
 ```powershell
 conda create -n chessboard-squares python=3.10 -y
 conda activate chessboard-squares
 ```
 
-### 2) Install Python requirements
+### 3) Install Python requirements
 
 ```powershell
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 3) Quick sanity check
+### 4) Quick sanity check
 
 ```powershell
 python -c "import torch; import torchvision; import cv2; import numpy; import pandas; import PIL; import sklearn; import matplotlib; import seaborn; import chess; print('OK')"
@@ -30,26 +41,26 @@ On Windows/PowerShell, run the scripts as `python .\<script>.py` (for example `p
 
 ### Data preprocessing / dataset creation
 
-#### Download the `raw_games/` data (required)
+#### Download `raw_games/` (required)
 
 The training/validation/test dataset is generated from game folders under `raw_games/`.
-This repo does not include the full `raw_games/` directory in Git (it's large), so you must download it separately.
+This repository does not include the full `raw_games/` directory in Git (it is large), so you must download it separately.
 
 - Open the Google Drive folder link in `raw_games_link.txt`
-- Download the `raw_games` folder (or zip) from Drive
-- Place it at the repo root so the path is exactly: `raw_games/<game>/...`
+- Download the `raw_games` folder (or ZIP) from Drive
+- Place it at the repository root so the path is exactly: `raw_games/<game>/...`
 
 After downloading, you should have a structure similar to:
 
 ```
 raw_games/
-	game2/
-		game2.csv
-		tagged_images/
-	game10/
-		game10.pgn
-		images/
-	...
+  game2/
+    game2.csv
+    tagged_images/
+  game10/
+    game10.pgn
+    images/
+  ...
 ```
 
 `python .\preprocessing.py`:
@@ -58,7 +69,7 @@ raw_games/
   - CSV-labeled games: `<game>.csv` + `tagged_images/`
   - PGN-only games: `<game>.pgn` + `images/` (frames are auto-aligned to moves using simple motion peaks)
 - Builds `final_dataset/{train,val,test}/<class>/*.png` directly by slicing each frame into 8×8 overlapping tiles
-- Adds PGN-only generated frames to **train only** (keeps val/test as strictly CSV-labeled)
+- Adds PGN-only generated frames to the **training set only** (validation/test remain strictly CSV-labeled)
 
 Run:
 
@@ -69,7 +80,6 @@ python .\preprocessing.py
 Expected inputs:
 
 - CSV-labeled games:
-
   - `raw_games/<game>/<game>.csv` (must include columns `from_frame` and `fen`)
   - `raw_games/<game>/tagged_images/frame_XXXXXX.jpg`
 
@@ -83,6 +93,8 @@ Notes:
 - The script prints per-game progress (CSV frame counts and PGN diff progress).
 
 ### Training
+
+Recommended approach: train on **Google Colab (GPU)** using `train_model.ipynb` (much faster than most local CPU setups). See: [Training on Google Colab](#training-on-google-colab-gpu-using-train_modelipynb).
 
 Prerequisite: run `python .\preprocessing.py` first so you have:
 
@@ -103,29 +115,11 @@ Notes:
 - Class order comes from `torchvision.datasets.ImageFolder` (alphabetical by folder name). If you rename class folders, retrain.
 - Hyperparameters like `num_epochs`, `batch_size`, and learning rate are currently set inside `train.py`.
 
-#### Training results (report)
-
-The latest training figures and summary text used for the report are stored in `for_report/`:
-
-- Learning curves:
-
-<img src="for_report/learning_curves.png" alt="Training learning curves" width="700" />
-
-- Confusion matrix:
-
-<img src="for_report/evaluation_confusion_matrix.png" alt="Evaluation confusion matrix" width="600" />
-
-Model file formats:
-
-- `train.py` saves a plain `state_dict`.
-- Some provided `.pth` files may be _checkpoint dicts_ that include metadata keys like `epoch`, `model_state`, `optim_state`, `history`, `classes`.
-- `predict.py` was updated to handle both formats (it extracts `model_state`/`state_dict` automatically).
-
 #### Training on Google Colab (GPU) using `train_model.ipynb`
 
 If you want faster training (GPU), use the Colab notebook `train_model.ipynb`. It unzips a prepared project folder from Google Drive and runs training.
 
-This repo’s recommended Colab workflow is **Drive-first**:
+This repository’s recommended Colab workflow is **Drive-first**:
 
 1. Prepare a folder locally: `chessboard-project-colab/`
 
@@ -137,8 +131,7 @@ chessboard-project-colab/
 
 Inside it, put:
 
-- Open the `chessboard-project-colab/` folder.
-- Copy `train.py` from this repo into `chessboard-project-colab/`.
+- Copy `train.py` from this repository into `chessboard-project-colab/`.
 - Place your prepared `final_dataset/` folder inside `chessboard-project-colab/`.
 
 So the structure looks like:
@@ -182,8 +175,8 @@ This creates `final_dataset/train`, `final_dataset/val`, `final_dataset/test` au
 
 3. Zip and upload to Google Drive
 
-- Zip the whole `chessboard-project-colab/` folder (so the zip contains the folder, not just its contents).
-- Upload the zip to your Google Drive (for example to `MyDrive/`).
+- Zip the whole `chessboard-project-colab/` folder (so the ZIP contains the folder, not just its contents).
+- Upload the ZIP to your Google Drive (for example to `MyDrive/`).
 
 4. Train in Colab using `train_model.ipynb`
 
@@ -208,26 +201,32 @@ Notes:
 - `checkpoint_last_*.pth` is a checkpoint dict (contains keys like `epoch`, `model_state`, `optim_state`, `history`, `classes`).
 - `chess_model_*.pth` is a plain PyTorch `state_dict`.
 
+#### Training results (report)
+
+The latest training figures and summary text used for the report are stored in `assets/for_report/`:
+
+- Learning curves:
+
+<img src="assets/for_report/learning_curves.png" alt="Training learning curves" width="700" />
+
+- Confusion matrix:
+
+<img src="assets/for_report/evaluation_confusion_matrix.png" alt="Evaluation confusion matrix" width="600" />
+
+Model file formats:
+
+- `train.py` saves a plain `state_dict`.
+- Some provided `.pth` files may be _checkpoint dicts_ that include metadata keys like `epoch`, `model_state`, `optim_state`, `history`, `classes`.
+- `predict.py` was updated to handle both formats (it extracts `model_state`/`state_dict` automatically).
+
 ### Predict FEN from an image
 
 `predict.py` loads a model, slices an input image into 8×8 tiles (same overlap idea as training), predicts a class per tile, and outputs a FEN string.
 
-#### Expected input image
-
-For best results, the input should be a **single chessboard** image where the board is clearly visible.
-
-- Recommended: **top-down (or near top-down)** view of the board.
-- The board should be **roughly centered** and **not heavily perspective-skewed**.
-- Avoid hands/pieces-in-motion/occlusions when capturing the image.
-- Lighting should be consistent (avoid heavy glare/shadows).
-
-Important: the current pipeline does a simple 8×8 grid crop after resizing the image to `800×800`. It does **not** detect corners / do perspective correction.
-So if your photo includes a lot of background or the board is rotated/skewed, grid cells may not line up with real squares.
-
 #### Usage
 
 1. Put your input images into `image_predict_folder/` (the script processes all `*.jpg`/`*.png` files in that folder).
-2. Edit the model path inside the script (look for `load_model("chess_model.pth", device)`).
+2. Update the model path inside the script (look for `load_model("chess_model.pth", device)`).
    - You can point it to any `.pth` file you trained/downloaded.
    - The loader supports both:
      - a plain PyTorch `state_dict`, and
@@ -274,7 +273,7 @@ Effects:
 
 You can tune this behavior by adjusting thresholds at the top of `predict.py` (for example `CONF_THRESHOLD` and `ENTROPY_THRESHOLD`).
 
-Tip: if many squares get a red X, try a cleaner/cropped top-down board image.
+Tip: if many squares get a red X, try using a cleaner, tightly cropped, top-down board image.
 
 ## Notes
 
